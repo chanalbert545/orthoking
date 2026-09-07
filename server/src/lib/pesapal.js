@@ -63,3 +63,23 @@ export async function createPesapalPayment(order) {
 
   return payment;
 }
+
+export async function getPesapalTransactionStatus(orderTrackingId) {
+  requirePesapalConfig();
+
+  const auth = await pesapalRequest("/Auth/Request", {
+    method: "POST",
+    body: JSON.stringify({
+      consumer_key: process.env.PESAPAL_CONSUMER_KEY,
+      secret: process.env.PESAPAL_CONSUMER_SECRET,
+    }),
+  });
+
+  return pesapalRequest(
+    `/Transactions/GetTransactionStatus?orderTrackingId=${encodeURIComponent(orderTrackingId)}`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${auth.token}` },
+    }
+  );
+}

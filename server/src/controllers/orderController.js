@@ -1,5 +1,8 @@
 import { prisma } from "../lib/prisma.js";
-import { createPesapalPayment } from "../lib/pesapal.js";
+import {
+  createPesapalPayment,
+  getPesapalTransactionStatus,
+} from "../lib/pesapal.js";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -249,6 +252,92 @@ export async function createOrder(req, res, next) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.errors });
     }
+    next(error);
+  }
+}
+
+function getPaymentStatus(statusResponse) {
+  const status = String(
+    statusResponse.payment_status_description || statusResponse.status || ""
+  ).toLowerCase();
+
+  if (status.includes("complete") || statusResponse.status_code === 1) {
+    return "completed";
+  }
+  if (status.includes("fail") || statusResponse.status_code === 2) {
+    return "failed";
+  }
+  if (status.includes("reverse") || statusResponse.status_code === 3) {
+    return "refunded";
+  }
+  if (status.includes("cancel")) {
+    return "cancelled";
+  }
+  return "pending";
+}
+
+export async function handlePesapalIpn(req, res, next) {
+  try {
+    const trackingId = req.query.OrderTrackingId || req.body?.OrderTrackingId;
+    const merchantReference =
+      req.query.OrderMerchantReference || req.body?.OrderMerchantReference;
+
+    if (!trackingId && !merchantReference) {
+      return res.status(400).json({ error: "Pesapal payment reference is required" });
+    }
+
+    const payment = await prisma.payment.findFirst({
+      where: {
+        OR: [
+          trackingId ? { trackingId: String(trackingId) } : undefined,
+          merchantReference
+            ? { merchantReference: String(merchantReference) }
+            : undefined,
+        ].filter(Boolean),
+      },
+    });
+
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    const statusResponse = trackingId
+      ? await getPesapalTransactionStatus(String(trackingId))
+      : { payment_status_description: "Pending" };
+    const paymentStatus = getPaymentStatus(statusResponse);
+    const paidAt = paymentStatus === "completed" ? new Date() : undefined;
+
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          paymentStatus,
+          trackingId: String(trackingId || payment.trackingId || ""),
+          merchantReference: String(
+            merchantReference || payment.merchantReference || ""
+          ),
+          providerReference: String(
+            trackingId || payment.providerReference || ""
+          ),
+          rawPayload: statusResponse,
+          ...(paidAt ? { paidAt } : {}),
+        },
+      }),
+      prisma.order.update({
+        where: { id: payment.orderId },
+        data: {
+          orderStatus: paymentStatus === "completed" ? "processing" : undefined,
+        },
+      }),
+    ]);
+
+    return res.json({
+      orderNotificationType: "IPN",
+      orderTrackingId: trackingId || payment.trackingId,
+      orderMerchantReference: merchantReference || payment.merchantReference,
+      paymentStatus,
+    });
+  } catch (error) {
     next(error);
   }
 }

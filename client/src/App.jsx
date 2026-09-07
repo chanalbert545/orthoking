@@ -14,6 +14,7 @@ import { ContactPage } from "./pages/ContactPage.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { ProductPage } from "./pages/ProductPage.jsx";
 import { PromotionsPage } from "./pages/PromotionsPage.jsx";
+import { PaymentSuccessPage } from "./pages/PaymentSuccessPage.jsx";
 import { ShopPage } from "./pages/ShopPage.jsx";
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
               <Route path="/products/:slug" element={<ProductPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage settings={settings} />} />
+              <Route path="/payment-success" element={<PaymentSuccessPage />} />
               <Route path="/about" element={<AboutPage settings={settings} />} />
               <Route
                 path="/contact"

@@ -67,6 +67,8 @@ router.delete("/admin/categories/:id", requireAdmin, categoryController.deleteCa
 // ============ ORDERS ============
 // Public endpoint to create order
 router.post("/orders", orderController.createOrder);
+router.get("/payments/ipn", orderController.handlePesapalIpn);
+router.post("/payments/ipn", orderController.handlePesapalIpn);
 
 // Admin endpoints
 router.get("/admin/orders", requireAdmin, orderController.listOrders);

@@ -7,6 +7,20 @@
 .contact-hero > p:last-child { color: rgba(255,255,255,.78); }
 .page-hero h1 { max-width: 760px; margin: 70px 0 18px; color: #10243e; font: 700 clamp(2.2rem, 4.5vw, 4.2rem)/1.05 Georgia, serif; text-transform: capitalize; }
 .page-hero > p:last-child { max-width: 560px; margin: 0; color: #5d6268; font-size: 1rem; line-height: 1.6; }
+.payment-result-hero { background: #10243e; color: #fff; }
+.payment-result-hero .eyebrow { color: #f5c518; }
+.payment-result-hero h1 { color: #fff; }
+.payment-result-hero > p:last-child { color: rgba(255,255,255,.78); }
+.payment-result-content { width: min(680px, calc(100% - 48px)); margin: 0 auto; padding: 88px 0 110px; text-align: center; }
+.payment-result-mark { width: 68px; height: 68px; margin: 0 auto 24px; display: grid; place-items: center; border-radius: 50%; background: #c62828; color: #fff; font-size: 2rem; font-weight: 700; }
+.payment-result-content h2 { margin: 0 0 14px; color: #10243e; font: 700 2rem Georgia, serif; }
+.payment-result-content > p { margin: 0 auto; max-width: 540px; color: #5d6268; line-height: 1.7; }
+.payment-reference { display: grid; gap: 12px; margin: 32px auto; padding: 22px; border: 1px solid #dedbd5; background: #f3f1ed; text-align: left; }
+.payment-reference div { display: flex; justify-content: space-between; gap: 20px; }
+.payment-reference dt { color: #5d6268; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.payment-reference dd { margin: 0; color: #10243e; font-weight: 700; overflow-wrap: anywhere; text-align: right; }
+.payment-result-actions { display: flex; justify-content: center; gap: 14px; margin-top: 34px; flex-wrap: wrap; }
+.payment-result-secondary { border-color: #10243e; color: #10243e; }
 .eyebrow { margin: 0; color: #c62828; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .story-section { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 96px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
 .story-section h2, .article-page h1 { margin: 12px 0 20px; color: #10243e; font: 700 clamp(2rem, 4vw, 3.6rem)/1.08 Georgia, serif; }
