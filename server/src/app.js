@@ -12,12 +12,15 @@ const __dirname = path.dirname(__filename);
 
 export function createApp() {
   const app = express();
-  const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+  const allowedOrigins = [
+  "http://localhost:5173",
+  "https://drorthoking.vercel.app",
+  ];
 
   app.use(helmet());
   app.use(
     cors({
-      origin,
+      origin: allowedOrigins,
       credentials: true,
     })
   );
