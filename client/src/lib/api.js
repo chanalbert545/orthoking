@@ -1,10 +1,11 @@
 const apiBaseUrl = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "https://orthoking.onrender.com" : "");
+const requestTimeoutMs = 60000;
 
 export async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
   let res;
   try {
     res = await fetch(`${apiBaseUrl}${path}`, {
@@ -16,6 +17,9 @@ export async function api(path, options = {}) {
       ...options,
     });
   } catch {
+    if (controller.signal.aborted) {
+      throw new Error("The server took too long to respond. Please try again.");
+    }
     if (options.signal?.aborted) {
       throw new Error("Request was cancelled");
     }
