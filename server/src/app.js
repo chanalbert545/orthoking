@@ -25,7 +25,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.get("/", (_req, res) => {
-    res.json({ ok: true, service: "dr-ortho-king", health: "/api/health" });
+    res.json({ ok: true, service: "dr-ortho-king" });
   });
   
   // Serve static files
