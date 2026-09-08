@@ -13,8 +13,12 @@ const __dirname = path.dirname(__filename);
 export function createApp() {
   const app = express();
   const allowedOrigins = [
-  "http://localhost:5173",
-  "https://drorthoking.vercel.app",
+    "http://localhost:5173",
+    "https://drorthoking.vercel.app",
+    ...(process.env.CLIENT_ORIGIN || "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
   ];
 
   app.use(helmet());

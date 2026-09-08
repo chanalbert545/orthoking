@@ -4,6 +4,13 @@ import { httpError } from "./error.js";
 
 const cookieName = "admin_token";
 
+const authCookieOptions = {
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+};
+
 export function signAdminToken(user) {
   return jwt.sign(
     { sub: user.id, role: user.role },
@@ -14,21 +21,13 @@ export function signAdminToken(user) {
 
 export function setAuthCookie(res, token) {
   res.cookie(cookieName, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...authCookieOptions,
     maxAge: 12 * 60 * 60 * 1000,
-    path: "/",
   });
 }
 
 export function clearAuthCookie(res) {
-  res.clearCookie(cookieName, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
+  res.clearCookie(cookieName, authCookieOptions);
 }
 
 export async function requireAdmin(req, _res, next) {
