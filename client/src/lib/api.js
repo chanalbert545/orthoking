@@ -1,6 +1,11 @@
-const apiBaseUrl = import.meta.env.VITE_API_URL ||
+export const apiBaseUrl = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "https://orthoking.onrender.com" : "");
 const requestTimeoutMs = 60000;
+
+export function assetUrl(url) {
+  if (!url || /^https?:\/\//i.test(url)) return url;
+  return `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`;
+}
 
 export async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;

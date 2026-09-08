@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { blogMediaBucket, supabaseAdmin } from "../lib/supabase.js";
 import { z } from "zod";
 
 const createPostSchema = z.object({
@@ -188,9 +189,24 @@ export async function deletePost(req, res, next) {
   try {
     const { id } = req.params;
 
-    await prisma.blogPost.delete({
+    const post = await prisma.blogPost.findUnique({
       where: { id },
     });
+
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    if (post.featuredImageStoragePath && supabaseAdmin) {
+      const { error: cleanupError } = await supabaseAdmin.storage
+        .from(blogMediaBucket)
+        .remove([post.featuredImageStoragePath]);
+      if (cleanupError) {
+        console.error("Failed to remove blog media from Supabase:", cleanupError);
+      }
+    }
+
+    await prisma.blogPost.delete({ where: { id } });
 
     res.json({ success: true, message: "Post deleted" });
   } catch (error) {

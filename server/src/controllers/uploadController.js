@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../lib/prisma.js";
-import { productImagesBucket, supabaseAdmin } from "../lib/supabase.js";
+import { blogMediaBucket, productImagesBucket, supabaseAdmin } from "../lib/supabase.js";
 
 const uploadsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -285,22 +285,34 @@ export async function uploadBlogFeaturedImage(req, res, next) {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    await ensureUploadsDir();
+    if (!supabaseAdmin) {
+      return res.status(503).json({ error: "Supabase Storage is not configured" });
+    }
 
-    // Generate unique filename
+    // Store blog media in Supabase so it survives backend redeploys.
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
     const filename = `blog-${postId}-${timestamp}-${random}${path.extname(req.file.originalname)}`;
-    const filepath = path.join(uploadsDir, filename);
+    const storagePath = `blog/${postId}/${filename}`;
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(blogMediaBucket)
+      .upload(storagePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
 
-    // Save file
-    await fs.writeFile(filepath, req.file.buffer);
+    if (uploadError) throw uploadError;
+
+    const publicUrl = supabaseAdmin.storage
+      .from(blogMediaBucket)
+      .getPublicUrl(storagePath).data.publicUrl;
 
     // Update post with featured image
     const updatedPost = await prisma.blogPost.update({
       where: { id: postId },
       data: {
-        featuredImageUrl: `/uploads/${filename}`,
+        featuredImageUrl: publicUrl,
+        featuredImageStoragePath: storagePath,
         mediaType: req.file.mimetype.startsWith("video/") ? "video" : "image",
       },
       include: {
@@ -313,6 +325,15 @@ export async function uploadBlogFeaturedImage(req, res, next) {
       post: updatedPost,
       message: "Featured image uploaded successfully",
     });
+
+    if (post.featuredImageStoragePath) {
+      const { error: cleanupError } = await supabaseAdmin.storage
+        .from(blogMediaBucket)
+        .remove([post.featuredImageStoragePath]);
+      if (cleanupError) {
+        console.error("Failed to remove previous blog media from Supabase:", cleanupError);
+      }
+    }
   } catch (error) {
     next(error);
   }

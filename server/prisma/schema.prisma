@@ -242,6 +242,7 @@ model BlogPost {
   excerpt         String?
   content         String?
   featuredImageUrl String?      @map("featured_image_url")
+  featuredImageStoragePath String? @map("featured_image_storage_path")
   mediaType       MediaType     @default(image) @map("media_type")
   ctaText         String?       @map("cta_text")
   ctaUrl          String?       @map("cta_url")

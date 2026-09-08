@@ -5,6 +5,7 @@ const supabaseUrl = process.env.SUPABASE_URL || (directDatabaseHost ? `https://$
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const productImagesBucket = process.env.SUPABASE_PRODUCT_IMAGES_BUCKET || "product-images";
+export const blogMediaBucket = process.env.SUPABASE_BLOG_MEDIA_BUCKET || "blog-media";
 export const supabaseAdmin = supabaseUrl && serviceRoleKey
   ? createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
