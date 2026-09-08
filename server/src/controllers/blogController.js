@@ -5,18 +5,18 @@ import { z } from "zod";
 const createPostSchema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().min(1, "Slug is required"),
-  excerpt: z.string().optional(),
-  content: z.string().optional(),
+  excerpt: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
   categoryId: z.string().uuid().optional().nullable(),
   authorId: z.string().uuid().optional().nullable(),
-  featuredImageUrl: z.string().url().optional(),
+  featuredImageUrl: z.string().url().nullable().optional(),
   mediaType: z.enum(["image", "video"]).default("image"),
   ctaText: z.string().optional().nullable(),
   ctaUrl: z.string().optional().nullable(),
   status: z.enum(["draft", "published"]).default("draft"),
   publishedAt: z.string().datetime().optional().nullable(),
-  seoTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  seoTitle: z.string().nullable().optional(),
+  metaDescription: z.string().nullable().optional(),
 });
 
 const updatePostSchema = createPostSchema.partial();
@@ -125,8 +125,20 @@ export async function createPost(req, res, next) {
 
     const post = await prisma.blogPost.create({
       data: {
-        ...validated,
+        title: validated.title,
+        slug: validated.slug,
+        excerpt: validated.excerpt,
+        content: validated.content,
+        categoryId: validated.categoryId,
         authorId,
+        featuredImageUrl: validated.featuredImageUrl,
+        mediaType: validated.mediaType,
+        ctaText: validated.ctaText,
+        ctaUrl: validated.ctaUrl,
+        status: validated.status,
+        publishedAt: validated.publishedAt ? new Date(validated.publishedAt) : null,
+        seoTitle: validated.seoTitle,
+        metaDescription: validated.metaDescription,
       },
       include: {
         category: true,
@@ -165,7 +177,24 @@ export async function updatePost(req, res, next) {
 
     const post = await prisma.blogPost.update({
       where: { id },
-      data: validated,
+      data: {
+        ...(validated.title !== undefined && { title: validated.title }),
+        ...(validated.slug !== undefined && { slug: validated.slug }),
+        ...(validated.excerpt !== undefined && { excerpt: validated.excerpt }),
+        ...(validated.content !== undefined && { content: validated.content }),
+        ...(validated.categoryId !== undefined && { categoryId: validated.categoryId }),
+        ...(validated.authorId !== undefined && { authorId: validated.authorId }),
+        ...(validated.featuredImageUrl !== undefined && { featuredImageUrl: validated.featuredImageUrl }),
+        ...(validated.mediaType !== undefined && { mediaType: validated.mediaType }),
+        ...(validated.ctaText !== undefined && { ctaText: validated.ctaText }),
+        ...(validated.ctaUrl !== undefined && { ctaUrl: validated.ctaUrl }),
+        ...(validated.status !== undefined && { status: validated.status }),
+        ...(validated.publishedAt !== undefined && {
+          publishedAt: validated.publishedAt ? new Date(validated.publishedAt) : null,
+        }),
+        ...(validated.seoTitle !== undefined && { seoTitle: validated.seoTitle }),
+        ...(validated.metaDescription !== undefined && { metaDescription: validated.metaDescription }),
+      },
       include: {
         category: true,
         author: true,
