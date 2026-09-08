@@ -19,10 +19,7 @@ export function ContactPage({ settings }) {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
-      const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
-      if (!accessKey) {
-        throw new Error("Contact form is not configured yet");
-      }
+      const accessKey = "90d2d92d-6711-40f6-8a7d-33aacd8f3029";
 
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
