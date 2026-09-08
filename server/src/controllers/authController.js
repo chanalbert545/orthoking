@@ -47,5 +47,6 @@ export function logout(_req, res) {
 }
 
 export function me(req, res) {
+  res.set("Cache-Control", "no-store");
   res.json({ user: req.admin });
 }

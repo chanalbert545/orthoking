@@ -27,7 +27,7 @@ export default function App() {
       .catch(() => setSettings({}));
 
     api("/api/auth/me")
-      .then((data) => setAdmin(data.user))
+      .then((data) => setAdmin(data.user || null))
       .catch(() => setAdmin(null));
   }, []);
 
