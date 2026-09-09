@@ -80,6 +80,13 @@ export async function createPesapalPayment(order) {
 
   const nameParts = order.customerName.trim().split(/\s+/);
 
+  console.log("PESAPAL ORDER DEBUG:", {
+  orderId: order.id,
+  amount: order.totalUgx,
+  currency: order.currency,
+  amountType: typeof order.totalUgx,
+  });
+
   const payment = await pesapalRequest(
     "/Transactions/SubmitOrderRequest",
     {
