@@ -17,9 +17,17 @@ async function pesapalRequest(path, options) {
       ...(options.headers || {}),
     },
   });
-  const data = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let data = {};
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(`Pesapal returned invalid JSON (${response.status}): ${responseText.slice(0, 500)}`);
+  }
+
   if (!response.ok || data.error) {
-    throw new Error(data.message || data.error?.message || "Pesapal request failed");
+    throw new Error(`Pesapal request failed (${response.status}): ${data.message || data.error?.message || JSON.stringify(data)}`);
   }
   return data;
 }
@@ -58,7 +66,7 @@ export async function createPesapalPayment(order) {
   });
 
   if (!payment.redirect_url) {
-    throw new Error(`Pesapal did not return a payment redirect URL: ${JSON.stringify(payment)}`);
+    throw new Error(`Pesapal did not return a payment redirect URL (response: ${JSON.stringify(payment)})`);
   }
 
   return payment;
