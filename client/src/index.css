@@ -641,6 +641,13 @@ textarea {
   padding: 48px 0 28px;
 }
 
+.footer-origin-logo {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  margin-bottom: 24px;
+}
+
 .footer-contact-grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
@@ -698,5 +705,9 @@ textarea {
 
   .footer-help {
     grid-column: 1 / -1;
+  }
+
+  .footer-origin-logo {
+    width: min(100%, 280px);
   }
 }

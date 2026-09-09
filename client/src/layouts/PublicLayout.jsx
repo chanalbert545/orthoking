@@ -49,6 +49,7 @@ export function PublicLayout({ settings, children }) {
       <footer className="site-footer">
         <div className="footer-inner">
           <div className="footer-help">
+            <img className="footer-origin-logo" src="/assets/made-in-turkey.png" alt="Best quality, made in Turkey" />
             <h3>We're Here to Help</h3>
             <p className="footer-hours">All Working Days, 9am to 5pm EAT</p>
             <div className="footer-contact-grid">
@@ -66,9 +67,9 @@ export function PublicLayout({ settings, children }) {
               <span>Connect with us</span>
               <div>
                 <a href="#facebook" aria-label="Facebook">f</a>
-                <a href="#twitter" aria-label="Twitter">t</a>
-                <a href="#youtube" aria-label="YouTube">▶</a>
-                <a href="#instagram" aria-label="Instagram">◎</a>
+                <a href="https://x.com/DrOrthoKin33362" target="_blank" rel="noreferrer" aria-label="X">t</a>
+                <a href="https://www.instagram.com/dr.ortho_king_ug/?hl=en" target="_blank" rel="noreferrer" aria-label="Instagram">◎</a>
+                <a href="https://www.tiktok.com/@dr..ortho.king.or" target="_blank" rel="noreferrer" aria-label="TikTok">♪</a>
               </div>
             </div>
           </div>
