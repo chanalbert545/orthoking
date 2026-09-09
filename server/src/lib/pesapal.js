@@ -18,6 +18,10 @@ async function pesapalRequest(path, options) {
     },
   });
   const responseText = await response.text();
+  if (!responseText.trim()) {
+    throw new Error(`Pesapal returned an empty response for ${path} (${response.status}, ${response.headers.get("content-type") || "no content type"})`);
+  }
+
   let data = {};
 
   try {
@@ -42,6 +46,10 @@ export async function createPesapalPayment(order) {
       secret: process.env.PESAPAL_CONSUMER_SECRET,
     }),
   });
+
+  if (!auth.token) {
+    throw new Error(`Pesapal authentication response did not include a token: ${JSON.stringify(auth)}`);
+  }
 
   const nameParts = order.customerName.trim().split(/\s+/);
   const payment = await pesapalRequest("/Transactions/SubmitOrderRequest", {
