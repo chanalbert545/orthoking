@@ -58,7 +58,7 @@ export async function createPesapalPayment(order) {
   });
 
   if (!payment.redirect_url) {
-    throw new Error("Pesapal did not return a payment redirect URL");
+    throw new Error(`Pesapal did not return a payment redirect URL: ${JSON.stringify(payment)}`);
   }
 
   return payment;
