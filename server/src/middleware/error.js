@@ -7,6 +7,8 @@ export function errorHandler(err, _req, res, _next) {
   const message =
     err.code === "P1001"
       ? "Database unavailable. Check the Supabase connection and try again."
+      : err.code === "SUPABASE_STORAGE"
+      ? err.message
       : status >= 500 && process.env.NODE_ENV === "production"
       ? "Something went wrong"
       : err.message || "Request failed";

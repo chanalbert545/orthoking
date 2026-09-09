@@ -13,3 +13,12 @@ export const supabaseAdmin = supabaseUrl && serviceRoleKey
       auth: { autoRefreshToken: false, persistSession: false },
     })
   : null;
+
+export function assertSupabaseStorageConfig() {
+  const missing = [];
+  if (!supabaseUrl) missing.push("SUPABASE_URL");
+  if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  if (missing.length > 0) {
+    throw new Error(`Supabase Storage is not configured. Missing: ${missing.join(", ")}`);
+  }
+}

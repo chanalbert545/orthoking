@@ -67,7 +67,12 @@ export async function uploadProductImage(req, res, next) {
         upsert: false,
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      const storageError = new Error(`Supabase blog media upload failed: ${uploadError.message}`);
+      storageError.status = 502;
+      storageError.code = "SUPABASE_STORAGE";
+      throw storageError;
+    }
 
     const publicUrl = supabaseAdmin.storage
       .from(productImagesBucket)
