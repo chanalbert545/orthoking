@@ -43,7 +43,7 @@ export async function createPesapalPayment(order) {
     method: "POST",
     body: JSON.stringify({
       consumer_key: process.env.PESAPAL_CONSUMER_KEY,
-      secret: process.env.PESAPAL_CONSUMER_SECRET,
+      consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
     }),
   });
 
@@ -87,7 +87,7 @@ export async function getPesapalTransactionStatus(orderTrackingId) {
     method: "POST",
     body: JSON.stringify({
       consumer_key: process.env.PESAPAL_CONSUMER_KEY,
-      secret: process.env.PESAPAL_CONSUMER_SECRET,
+      consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
     }),
   });
 
