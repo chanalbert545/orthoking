@@ -16,7 +16,7 @@ import * as galleryController from "../controllers/galleryController.js";
 import * as promotionController from "../controllers/promotionController.js";
 import * as uploadController from "../controllers/uploadController.js";
 import { requireAdmin } from "../middleware/auth.js";
-import { uploadSingle } from "../middleware/upload.js";
+import { compressProductImage, uploadSingle } from "../middleware/upload.js";
 
 export const router = Router();
 
@@ -67,6 +67,9 @@ router.delete("/admin/categories/:id", requireAdmin, categoryController.deleteCa
 // ============ ORDERS ============
 // Public endpoint to create order
 router.post("/orders", orderController.createOrder);
+router.get("/orders/:id/payments/mtn/status", orderController.verifyMtnPayment);
+router.get("/orders/:id/status", orderController.getOrderPaymentStatus);
+router.get("/orders/:id/track", orderController.trackOrder);
 router.get("/payments/ipn", orderController.handlePesapalIpn);
 router.post("/payments/ipn", orderController.handlePesapalIpn);
 
@@ -74,6 +77,7 @@ router.post("/payments/ipn", orderController.handlePesapalIpn);
 router.get("/admin/orders", requireAdmin, orderController.listOrders);
 router.get("/admin/orders/:id", requireAdmin, orderController.getOrder);
 router.patch("/admin/orders/:id", requireAdmin, orderController.updateOrder);
+router.delete("/admin/orders/:id", requireAdmin, orderController.deleteOrder);
 router.post("/admin/orders/:id/cancel", requireAdmin, orderController.cancelOrder);
 
 // ============ BLOG ============
@@ -121,6 +125,7 @@ router.post(
   "/admin/products/:productId/images",
   requireAdmin,
   uploadSingle,
+  compressProductImage,
   uploadController.uploadProductImage
 );
 router.delete(

@@ -15,11 +15,24 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-try {
-  assertSupabaseStorageConfig();
-} catch (error) {
-  console.error(error.message);
+if (process.env.DATABASE_URL.includes("YOUR-DB-PASSWORD")) {
+  console.error("DATABASE_URL still contains the YOUR-DB-PASSWORD placeholder. Copy the real connection string from Supabase.");
   process.exit(1);
+}
+
+if (process.env.NODE_ENV === "production") {
+  try {
+    assertSupabaseStorageConfig();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+} else {
+  try {
+    assertSupabaseStorageConfig();
+  } catch (error) {
+    console.warn(`${error.message}. File uploads are disabled in development.`);
+  }
 }
 
 const app = createApp();

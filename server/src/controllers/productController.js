@@ -4,6 +4,28 @@ import { z } from "zod";
 const productDetailCache = new Map();
 const productDetailCacheTtl = 30 * 1000;
 
+function isHomeFurnitureProduct(product) {
+  const categoryValues = [product.category?.name, product.category?.slug];
+  const furnitureNameTerms = [
+    "sofa",
+    "night stand",
+    "nightstand",
+    "tv stand",
+    "genuine leather",
+    "vegan leather",
+    "adjustable bed",
+    " bed",
+  ];
+  const productName = product.name?.trim().toLowerCase() || "";
+
+  return [...categoryValues, productName]
+    .filter(Boolean)
+    .some((value) => {
+      const normalizedValue = value.trim().toLowerCase();
+      return normalizedValue.includes("furniture") || furnitureNameTerms.some((term) => normalizedValue.includes(term));
+    });
+}
+
 // Validation schemas
 const createProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -41,9 +63,13 @@ export async function listProducts(req, res, next) {
       active,
       sortBy = "createdAt",
       sortOrder = "desc",
+      includeTotal = "false",
+      listing = "false",
     } = req.query;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNumber - 1) * pageSize;
 
     const where = {};
     if (categoryId) where.categoryId = categoryId;
@@ -61,9 +87,21 @@ export async function listProducts(req, res, next) {
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        include: {
-          category: true,
+        select: {
+          id: true,
+          categoryId: true,
+          name: true,
+          slug: true,
+          description: true,
+          isFeatured: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: { id: true, name: true, slug: true },
+          },
           variants: {
+            where: listing === "true" ? { isActive: true } : undefined,
             select: {
               id: true,
               sku: true,
@@ -74,34 +112,59 @@ export async function listProducts(req, res, next) {
               formerPriceUgx: true,
               stock: true,
               isActive: true,
-              images: {
-                orderBy: { sortOrder: "asc" },
-                take: 1,
-              },
             },
           },
           images: {
+            select: {
+              id: true,
+              publicUrl: true,
+              altText: true,
+              mimeType: true,
+              sortOrder: true,
+            },
             orderBy: { sortOrder: "asc" },
             take: 1,
           },
         },
-        skip,
-        take: parseInt(limit),
+        ...(listing !== "true" && {
+          skip,
+          take: pageSize + 1,
+        }),
         orderBy: {
           [sortBy]: sortOrder.toLowerCase(),
         },
       }),
-      prisma.product.count({ where }),
+      includeTotal === "true" ? prisma.product.count({ where }) : Promise.resolve(null),
     ]);
 
+    const orderedProducts = listing === "true"
+      ? [...products].sort((first, second) => {
+        const firstIsHomeFurniture = isHomeFurnitureProduct(first);
+        const secondIsHomeFurniture = isHomeFurnitureProduct(second);
+        return Number(firstIsHomeFurniture) - Number(secondIsHomeFurniture);
+      })
+      : products;
+    const hasMore = listing === "true"
+      ? orderedProducts.length > pageNumber * pageSize
+      : orderedProducts.length > pageSize;
+    const pageProducts = listing === "true"
+      ? orderedProducts.slice(skip, skip + pageSize)
+      : hasMore ? orderedProducts.slice(0, pageSize) : orderedProducts;
+    const pagination = {
+      page: pageNumber,
+      limit: pageSize,
+      hasMore,
+    };
+
+    if (total !== null) {
+      pagination.total = total;
+      pagination.pages = Math.ceil(total / pageSize);
+    }
+
     res.json({
-      products,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit)),
-      },
+      products: pageProducts,
+      pagination,
+      hasMore,
     });
   } catch (error) {
     next(error);

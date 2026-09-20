@@ -167,6 +167,7 @@ model Payment {
   orderId           String        @unique @map("order_id") @db.Uuid
   paymentStatus     PaymentStatus @default(pending) @map("payment_status")
   provider          String        @default("pesapal")
+  paymentMethod     String        @default("pesapal") @map("payment_method")
   providerReference String?       @map("provider_reference")
   trackingId        String?       @map("tracking_id")
   merchantReference String?       @map("merchant_reference")
@@ -176,6 +177,7 @@ model Payment {
   updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   order             Order         @relation(fields: [orderId], references: [id], onUpdate: NoAction)
 
+  @@index([paymentMethod, paymentStatus], map: "payments_method_status_idx")
   @@map("payments")
 }
 

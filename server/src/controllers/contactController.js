@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { prisma } from "../lib/prisma.js";
 import { httpError } from "../middleware/error.js";
 
-const contactRecipient = process.env.CONTACT_EMAIL || "orthoking824@gmail.com";
+const contactRecipient = process.env.CONTACT_EMAIL || "info@drorthoking.com";
 
 function getMailTransport() {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) return null;
