@@ -1,10 +1,21 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
 
 export function AdminLayout({ user, children }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowScrollTop(window.scrollY > 500);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" });
@@ -40,6 +51,7 @@ export function AdminLayout({ user, children }) {
         </div>
       </header>
       <main className="page admin-main">{children}</main>
+      {showScrollTop && <button className="scroll-top-button" type="button" aria-label="Back to top" title="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>}
     </div>
   );
 }

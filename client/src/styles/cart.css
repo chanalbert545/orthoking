@@ -89,7 +89,7 @@
 
 .btn-remove {
   padding: 0.5rem 1rem;
-  background: #f44336;
+  background: var(--promotion-gradient);
   color: white;
   border: none;
   border-radius: 8px;
@@ -98,7 +98,7 @@
 }
 
 .btn-remove:hover {
-  background: #d32f2f;
+  background: var(yellow);
 }
 
 .cart-summary {
@@ -138,10 +138,10 @@
   margin: 1rem 0;
 }
 
-.btn {
+.cart-page .btn {
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
   margin-bottom: 0.75rem;
@@ -151,38 +151,37 @@
   text-align: center;
 }
 
-.btn-primary {
-  background: #0066cc;
+.cart-page .btn-primary {
+  background: var(yellow);
   color: white;
   font-weight: bold;
 }
 
-.btn-primary:hover {
+.cart-page .btn-primary:hover {
   background: #0052a3;
 }
 
-.btn-secondary {
-  background: #f5f5f5;
+.cart-page .btn-secondary {
+  background: var(yellow);
   color: #333;
   border: 1px solid #ddd;
 }
 
-.btn-secondary:hover {
+.cart-page .btn-secondary:hover {
   background: #e8e8e8;
 }
 
-.btn-link {
-  background: none;
-  color: #0066cc;
-  text-decoration: underline;
-  padding: 0.5rem;
+.cart-page .btn-link {
+  background: #dc2626;
+  color: white;
+  text-decoration: none;
 }
 
-.btn-link:hover {
-  color: #0052a3;
+.cart-page .btn-link:hover {
+  background: #b91c1c;
 }
 
-.btn-block {
+.cart-page .btn-block {
   width: 100%;
 }
 

@@ -4,8 +4,8 @@ import { api } from "../lib/api.js";
 import { useCart } from "../features/cart/CartContext.jsx";
 import "../styles/checkout.css";
 
-function getShippingFee(city, outsideKampalaFee) {
-  return city.trim().toLowerCase() === "kampala" ? 0 : outsideKampalaFee;
+function getShippingFee() {
+  return 0;
 }
 
 export function CheckoutPage({ settings }) {
@@ -13,6 +13,7 @@ export function CheckoutPage({ settings }) {
   const { items, clear } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("mtn");
   const [formData, setFormData] = useState({
     customerName: "",
     email: "",
@@ -45,8 +46,7 @@ export function CheckoutPage({ settings }) {
     (sum, item) => sum + item.regularPriceUgx * item.quantity,
     0
   );
-  const outsideKampalaFee = Number(settings?.shippingUgx ?? 15000);
-  const shipping = formData.city ? getShippingFee(formData.city, outsideKampalaFee) : 0;
+  const shipping = getShippingFee();
   const total = subtotal + shipping;
 
   function handleChange(e) {
@@ -76,6 +76,7 @@ export function CheckoutPage({ settings }) {
         items: orderItems,
         shippingUgx: shipping,
         discountUgx: 0,
+        paymentMethod,
       };
 
       const response = await api("/api/orders", {
@@ -83,13 +84,13 @@ export function CheckoutPage({ settings }) {
         body: JSON.stringify(orderData),
       });
 
-      if (!response.paymentUrl) {
-        throw new Error("Pesapal did not return a payment page");
-      }
-
       // Clear the cart only after the payment page has been created.
       clear();
-      window.location.assign(response.paymentUrl);
+      if (response.paymentUrl) {
+        window.location.assign(response.paymentUrl);
+      } else {
+        navigate(`/payment-success?orderNumber=${encodeURIComponent(response.id)}`);
+      }
     } catch (err) {
       setError(err.message || "Failed to create order");
     } finally {
@@ -134,13 +135,17 @@ export function CheckoutPage({ settings }) {
               <div className="form-group"><label htmlFor="city">City</label><input id="city" name="city" required value={formData.city} onChange={handleChange} placeholder="Kampala" /></div>
               <div className="form-group full-field"><label htmlFor="country">Country</label><select id="country" name="country" required value={formData.country} onChange={handleChange}><option value="Uganda">Uganda</option></select></div>
             </div>
-            <div className="shipping-choice"><span>Standard delivery</span><strong>{formData.city ? shipping === 0 ? "FREE" : `UGX ${shipping.toLocaleString()}` : "Enter city"}</strong><small>{formData.city ? shipping === 0 ? "Free delivery within Kampala." : "UGX 15,000 delivery fee outside Kampala." : "Enter your city to calculate delivery."}</small></div>
+            <div className="shipping-choice"><span>Standard delivery</span><strong>{formData.city ? "FREE" : "Enter city"}</strong><small>{formData.city ? "Free delivery to all areas and locations." : "Enter your city to calculate delivery."}</small></div>
           </section>
 
           <section className="checkout-section">
             <div className="section-title"><span>03</span><div><h2>Payment</h2><p>All transactions are secure and encrypted.</p></div></div>
-            <div className="payment-choice"><span className="payment-radio" /> <strong>Pesapal</strong><span className="payment-markers"><img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa" /><img src="https://cdn.simpleicons.org/mastercard/EB001B" alt="Mastercard" /><img src="https://cdn.simpleicons.org/americanexpress/2E77BC" alt="American Express" /><i>+3</i></span></div>
-            <p className="payment-note">You will be redirected to Pesapal to complete your purchase.</p>
+            <div className="payment-methods">
+              <label className={`payment-choice ${paymentMethod === "mtn" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="mtn" checked={paymentMethod === "mtn"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>MTN Mobile Money</strong><span>Uganda</span></label>
+              <label className={`payment-choice ${paymentMethod === "airtel" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="airtel" checked={paymentMethod === "airtel"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>Airtel Money</strong><span>Uganda</span></label>
+              {import.meta.env.VITE_PESAPAL_ENABLED === "true" && <label className={`payment-choice ${paymentMethod === "pesapal" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="pesapal" checked={paymentMethod === "pesapal"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>Pesapal</strong><span>Cards and mobile money</span></label>}
+            </div>
+            <p className="payment-note">You will receive payment instructions after your order is validated.</p>
           </section>
 
           <section className="checkout-section">

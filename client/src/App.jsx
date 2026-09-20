@@ -16,6 +16,7 @@ import { ProductPage } from "./pages/ProductPage.jsx";
 import { PromotionsPage } from "./pages/PromotionsPage.jsx";
 import { PaymentSuccessPage } from "./pages/PaymentSuccessPage.jsx";
 import { ShopPage } from "./pages/ShopPage.jsx";
+import { TrackOrderPage } from "./pages/TrackOrderPage.jsx";
 
 export default function App() {
   const [settings, setSettings] = useState({});
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage settings={settings} />} />
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
+              <Route path="/track-order" element={<TrackOrderPage />} />
               <Route path="/about" element={<AboutPage settings={settings} />} />
               <Route
                 path="/contact"

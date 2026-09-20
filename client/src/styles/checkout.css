@@ -361,6 +361,36 @@
   color: #10243e;
 }
 
+.payment-methods {
+  display: grid;
+  gap: 10px;
+}
+
+.payment-methods .payment-choice {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.payment-methods .payment-choice.selected {
+  border-color: #c62828;
+  box-shadow: 0 0 0 2px rgba(198, 40, 40, .12);
+}
+
+.payment-methods .payment-choice input {
+  accent-color: #c62828;
+}
+
+.payment-methods .payment-choice span {
+  color: #777;
+  font-size: .8rem;
+}
+
 .shipping-choice span,
 .shipping-choice strong,
 .payment-choice strong {

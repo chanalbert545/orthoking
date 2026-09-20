@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const faqs = [
   ["Are your mattresses really made in Turkiye?", "Yes. All Dr. Ortho King mattresses are genuinely manufactured in Turkiye and imported directly for sale in Uganda -- they are not locally assembled copies."],
   ["What warranty do you offer?", "Every orthopedic mattress comes with a standard 5-Year Warranty covering manufacturing defects under normal household use."],
@@ -12,5 +14,41 @@ const faqs = [
 ];
 
 export function FaqSection() {
-  return <section className="faq-section"><div className="faq-heading"><p className="eyebrow">Frequently asked questions</p><h2>Answers before you choose.</h2><p>Find quick answers about our products, delivery, payment options, and promotions.</p></div><div className="faq-list">{faqs.map(([question, answer]) => <article className="faq-item" key={question}><h3>Q: {question}</h3><p><strong>A:</strong> {answer}</p></article>)}</div></section>;
+  const [openIndex, setOpenIndex] = useState(null);
+
+  return (
+    <section className="faq-section">
+      <div className="faq-heading">
+        <p className="eyebrow">Frequently asked questions</p>
+        <h2>Answers before you choose.</h2>
+        <p>Find quick answers about our products, delivery, payment options, and promotions.</p>
+      </div>
+
+      <div className="faq-list">
+        {faqs.map(([question, answer], index) => {
+          const isOpen = openIndex === index;
+
+          return (
+            <article className={`faq-item ${isOpen ? "open" : ""}`} key={question}>
+              <button
+                type="button"
+                className="faq-question"
+                onClick={() => setOpenIndex(isOpen ? null : index)}
+                aria-expanded={isOpen}
+              >
+                <span>Q: {question}</span>
+                <span className="faq-toggle" aria-hidden="true">{isOpen ? "−" : "+"}</span>
+              </button>
+
+              {isOpen && (
+                <div className="faq-answer">
+                  <strong>A:</strong> {answer}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
 }

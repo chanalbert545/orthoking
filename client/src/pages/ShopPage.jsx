@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
+import { useCart } from "../features/cart/CartContext.jsx";
+import { CartAddedModal } from "../components/CartAddedModal.jsx";
 import "../styles/shop.css";
 
 const categoryNames = [
@@ -11,7 +13,7 @@ const categoryNames = [
   "Turkish Dr. Ortho Spring Range (Compressed Pocket Spring)",
 ];
 
-const sizePriority = ["small", "queen", "king"];
+const sizePriority = ["queen", "king", "small"];
 const promotionCutoff = new Date("2026-09-07T00:00:00Z");
 
 function preferredVariant(variants = []) {
@@ -25,11 +27,16 @@ export function ShopPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [search, setSearch] = useState("");
   const [promotions, setPromotions] = useState([]);
+  const [addedProductId, setAddedProductId] = useState(null);
+  const [cartAddedItem, setCartAddedItem] = useState(null);
   const categoryScrollerRef = useRef(null);
+  const { addItem } = useCart();
 
   const availableCategoryNames = useMemo(() => {
     const apiCategoryNames = categories.map((category) => category.name);
@@ -38,9 +45,12 @@ export function ShopPage() {
 
   useEffect(() => {
     loadCategories();
-    loadProducts();
-    api("/api/promotions?active=true&limit=20").then((data) => setPromotions(data.promotions || [])).catch(() => {});
+    api("/api/promotions?active=true&limit=4").then((data) => setPromotions(data.promotions || [])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadProducts(1, false);
+  }, [selectedCategory, search]);
 
   async function loadCategories() {
     try {
@@ -51,31 +61,60 @@ export function ShopPage() {
     }
   }
 
-  async function loadProducts() {
+  async function loadProducts(page = 1, append = false) {
     try {
-      setLoading(true);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
       const params = new URLSearchParams();
-      params.append("page", 1);
-      params.append("limit", 50);
+      params.append("page", page);
+      params.append("limit", 100);
+      params.append("active", "true");
+      params.append("listing", "true");
+      if (search.trim()) params.append("search", search.trim());
+      const category = categories.find((item) => item.name === selectedCategory);
+      if (category?.id) params.append("categoryId", category.id);
 
       const data = await api(`/api/products?${params}`);
-      setProducts(data.products || []);
+      setProducts((current) => append ? [...current, ...(data.products || [])] : (data.products || []));
+      setHasMore(Boolean(data.hasMore ?? data.pagination?.hasMore));
       setError(null);
     } catch (err) {
       setError(err.message);
       setProducts([]);
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   }
 
   const visibleProducts = useMemo(() => {
     return products.filter((product) => {
       const matchesCategory = !selectedCategory || product.category?.name === selectedCategory;
-      const matchesSearch = !search || product.name.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = !search || product.name.toLowerCase().includes(search.toLowerCase()) || product.variants?.some((variant) => variant.size?.toLowerCase().includes(search.toLowerCase()));
       return matchesCategory && matchesSearch;
     });
   }, [products, search, selectedCategory]);
+
+  const productSizeCards = useMemo(() => visibleProducts
+    .flatMap((product) => {
+      const variants = product.variants?.filter((variant) => variant.isActive !== false) || [];
+      return variants.length > 0
+        ? variants.map((variant) => ({ product, variant }))
+        : [{ product, variant: null }];
+    })
+    .sort((first, second) => {
+      const furnitureNameTerms = ["sofa", "night stand", "nightstand", "tv stand", "genuine leather", "vegan leather", "adjustable bed", " bed"];
+      const firstProductText = `${first.product.name || ""} ${first.product.category?.name || ""} ${first.product.category?.slug || ""}`.toLowerCase();
+      const secondProductText = `${second.product.name || ""} ${second.product.category?.name || ""} ${second.product.category?.slug || ""}`.toLowerCase();
+      const firstIsHomeFurniture = firstProductText.includes("furniture") || furnitureNameTerms.some((term) => firstProductText.includes(term));
+      const secondIsHomeFurniture = secondProductText.includes("furniture") || furnitureNameTerms.some((term) => secondProductText.includes(term));
+      if (firstIsHomeFurniture !== secondIsHomeFurniture) {
+        return Number(firstIsHomeFurniture) - Number(secondIsHomeFurniture);
+      }
+      const firstIndex = sizePriority.indexOf(first.variant?.size?.trim().toLowerCase());
+      const secondIndex = sizePriority.indexOf(second.variant?.size?.trim().toLowerCase());
+      return (firstIndex < 0 ? sizePriority.length : firstIndex) - (secondIndex < 0 ? sizePriority.length : secondIndex);
+    }), [visibleProducts]);
 
   const promotionProducts = useMemo(() => {
     const explicitIds = new Set(promotions.map((promotion) => promotion.productId));
@@ -91,6 +130,26 @@ export function ShopPage() {
       left: direction * Math.max(categoryScrollerRef.current.clientWidth * 0.8, 220),
       behavior: "smooth",
     });
+  }
+
+  function handleAddToCart(product, variant) {
+    if (!variant || variant.stock < 1) return;
+    addItem({
+      variantId: variant.id,
+      productId: product.id,
+      productName: product.name,
+      size: variant.size,
+      thickness: variant.thickness,
+      color: variant.color,
+      regularPriceUgx: variant.regularPriceUgx,
+      quantity: 1,
+    });
+    setAddedProductId(product.id);
+    setCartAddedItem({
+      productName: `${product.name} (${variant.size})`,
+      priceLabel: `UGX ${Number(variant.regularPriceUgx).toLocaleString()}`,
+    });
+    window.setTimeout(() => setAddedProductId(null), 1800);
   }
 
   return (
@@ -110,9 +169,23 @@ export function ShopPage() {
         </label>
       </div>
       <main className="shop-products">
+        {cartAddedItem && (
+          <CartAddedModal
+            productName={cartAddedItem.productName}
+            priceLabel={cartAddedItem.priceLabel}
+            onClose={() => setCartAddedItem(null)}
+          />
+        )}
         {promotionProducts.length > 0 && <aside className="promotion-rail"><p className="eyebrow">Limited-time offers</p><h2>Shop the sale</h2>{promotionProducts.slice(0, 4).map((product) => { const promotion = promotions.find((item) => item.productId === product.id); const image = product.images?.[0]?.publicUrl; return <Link to={`/products/${product.slug}`} className="promotion-rail-item" key={product.id}>{image && <img src={image} alt="" loading="lazy" decoding="async" />}<div><strong>{product.name}</strong><span>{promotion ? promotion.discountType === "percent" ? `${promotion.percent}% off` : `UGX ${promotion.amountUgx?.toLocaleString()} off` : "Special offer"}</span></div></Link>; })}<Link to="/promotions" className="red-link">View all offers →</Link></aside>}
           {loading ? (
-            <div className="loading">Loading products...</div>
+            <div className="products-grid shop-skeleton-grid" aria-label="Loading products">
+              {Array.from({ length: 4 }, (_, index) => (
+                <div className="product-card shop-skeleton-card" key={index}>
+                  <div className="shop-skeleton-image" />
+                  <div className="shop-skeleton-info"><span /><span /></div>
+                </div>
+              ))}
+            </div>
           ) : error ? (
             <div className="error">Error: {error}</div>
           ) : visibleProducts.length === 0 ? (
@@ -120,37 +193,38 @@ export function ShopPage() {
           ) : (
             <>
               <div className="products-grid">
-                {visibleProducts.map((product) => {
-                  const productImage = product.images?.[0];
-                  const variantImage = product.variants?.flatMap((variant) => variant.images || [])[0];
-                  const image = productImage || variantImage;
+                {productSizeCards.map(({ product, variant }) => {
+                  const image = product.images?.[0];
                   const imageUrl = image?.publicUrl || product.image;
-                  const priceVariant = preferredVariant(product.variants);
+                  const displayName = variant?.size ? `${product.name} (${variant.size})` : product.name;
+                  const priceVariant = variant || preferredVariant(product.variants);
                   const card = <>
-                    <div className="product-image-wrap">{imageUrl ? <img src={imageUrl} alt={image?.altText || product.name} className="product-image" loading="lazy" decoding="async" /> : <div className="image-placeholder">No image</div>}</div>
+                    <div className="product-image-wrap">{imageUrl ? <img src={imageUrl} alt={image?.altText || displayName} className="product-image" loading="lazy" decoding="async" /> : <div className="image-placeholder">No image</div>}</div>
                     <div className="product-info">
-                      <h3>{product.name}</h3>
+                      <h3>{displayName}</h3>
                       {product.description && (
                         <p className="product-description">
                           {product.description.substring(0, 100)}...
                         </p>
                       )}
-                      {product.variants && product.variants.length > 0 && (
-                        <p className="product-variants">
-                          {product.variants.length} variant
-                          {product.variants.length !== 1 ? "s" : ""}
-                        </p>
-                      )}
-                      {priceVariant?.regularPriceUgx && (
-                          <p className="product-price" style={{ color: "green" }}>
-                            From UGX {priceVariant.regularPriceUgx.toLocaleString()}
-                          </p>
-                        )}
+                      {priceVariant?.regularPriceUgx && <p className="product-price">UGX {priceVariant.regularPriceUgx.toLocaleString()}</p>}
+                      {priceVariant?.formerPriceUgx && <p className="former-price">UGX {priceVariant.formerPriceUgx.toLocaleString()}</p>}
                     </div>
                   </>;
-                  return product.slug ? <Link key={product.id} to={`/products/${product.slug}`} className="product-card">{card}</Link> : <article key={product.id} className="product-card">{card}</article>;
+                    const canAddToCart = Boolean(priceVariant && priceVariant.stock > 0);
+                    return <article key={`${product.id}-${variant?.id || "default"}`} className="product-card">
+                      {product.slug ? <Link to={`/products/${product.slug}`} className="product-card-link">{card}</Link> : card}
+                      <button className="shop-add-button" type="button" disabled={!canAddToCart} onClick={() => handleAddToCart(product, priceVariant)}>
+                        {!canAddToCart ? "Out of stock" : addedProductId === product.id ? "Added to cart" : "Add to cart"}
+                      </button>
+                    </article>;
                 })}
               </div>
+              {hasMore && (
+                <button className="shop-load-more" type="button" onClick={() => loadProducts(products.length / 100 + 1, true)} disabled={loadingMore}>
+                  {loadingMore ? "Loading..." : "Load more products"}
+                </button>
+              )}
             </>
           )}
         </main>

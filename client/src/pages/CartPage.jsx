@@ -102,15 +102,11 @@ export function CartPage() {
               </div>
 
               <Link to="/checkout" className="btn btn-primary btn-block">
-                Proceed to Checkout
-              </Link>
-
-              <Link to="/shop" className="btn btn-secondary btn-block">
-                Continue Shopping
+                Checkout
               </Link>
 
               <button
-                className="btn btn-link"
+                className="btn btn-link btn-block"
                 onClick={() => {
                   if (confirm("Clear your entire cart?")) {
                     clear();

@@ -308,14 +308,38 @@ export async function deleteProduct(req, res, next) {
   try {
     const { id } = req.params;
 
-    await prisma.product.delete({
-      where: { id },
+    const orderItemCount = await prisma.orderItem.count({
+      where: { productId: id },
     });
+
+    if (orderItemCount > 0) {
+      await prisma.$transaction([
+        prisma.product.update({
+          where: { id },
+          data: { isActive: false },
+        }),
+        prisma.productVariant.updateMany({
+          where: { productId: id },
+          data: { isActive: false },
+        }),
+      ]);
+
+      return res.json({
+        success: true,
+        archived: true,
+        message: "Product archived because it is referenced by existing orders",
+      });
+    }
+
+    await prisma.product.delete({ where: { id } });
 
     res.json({ success: true, message: "Product deleted" });
   } catch (error) {
     if (error.code === "P2025") {
       return res.status(404).json({ error: "Product not found" });
+    }
+    if (error.code === "P2003") {
+      return res.status(409).json({ error: "Product has existing orders and was not deleted. Archive it instead." });
     }
     next(error);
   }

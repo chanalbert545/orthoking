@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useCart } from "../features/cart/CartContext.jsx";
+import { CartAddedModal } from "../components/CartAddedModal.jsx";
 import "../styles/product.css";
 
 const sizePriority = ["small", "queen", "king"];
@@ -25,6 +26,7 @@ export function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
   const [stockNotice, setStockNotice] = useState(false);
+  const [cartAddedItem, setCartAddedItem] = useState(null);
 
   useEffect(() => {
     loadProduct();
@@ -68,6 +70,10 @@ export function ProductPage() {
       quantity: parseInt(quantity),
     });
 
+    setCartAddedItem({
+      productName: product.name,
+      priceLabel: `UGX ${Number(selectedVariant.regularPriceUgx * parseInt(quantity)).toLocaleString()}`,
+    });
     setMessage("Added to cart!");
     setTimeout(() => setMessage(""), 3000);
   }
@@ -221,6 +227,13 @@ export function ProductPage() {
           )}
         </div>
       </div>
+      {cartAddedItem && (
+        <CartAddedModal
+          productName={cartAddedItem.productName}
+          priceLabel={cartAddedItem.priceLabel}
+          onClose={() => setCartAddedItem(null)}
+        />
+      )}
       {stockNotice && (
         <div className="stock-modal-backdrop" role="presentation" onClick={() => setStockNotice(false)}>
           <div className="stock-modal" role="dialog" aria-modal="true" aria-labelledby="stock-modal-title" onClick={(event) => event.stopPropagation()}>

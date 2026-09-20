@@ -22,7 +22,7 @@ export function PromotionsPage() {
   useEffect(() => {
     Promise.all([
       api("/api/promotions?active=true&limit=100"),
-      api("/api/products?limit=100"),
+      api("/api/products?limit=100&active=true&listing=true"),
     ]).then(([promotionData, productData]) => {
       setPromotions(promotionData.promotions || []);
       setProducts(productData.products || []);

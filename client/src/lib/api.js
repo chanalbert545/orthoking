@@ -1,5 +1,6 @@
-export const apiBaseUrl = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? "https://orthoking.onrender.com" : "");
+export const apiBaseUrl = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_URL || "https://orthoking.onrender.com")
+  : "";
 const requestTimeoutMs = 60000;
 
 export function assetUrl(url) {

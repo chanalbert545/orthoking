@@ -47,7 +47,7 @@ export function AdminDashboardPage({ user, settings }) {
     try {
       // Load basic stats
       const [products, orders] = await Promise.all([
-        api("/api/products?limit=1"),
+        api("/api/products?limit=1&includeTotal=true"),
         api("/api/admin/orders?limit=1"),
       ]);
 
@@ -223,7 +223,7 @@ function ProductsTab() {
 
   async function loadProducts() {
     try {
-      const data = await api("/api/products?limit=100");
+      const data = await api("/api/products?limit=100&includeTotal=true");
       setProducts(data.products || []);
     } catch (err) {
       console.error("Failed to load products:", err);
@@ -237,6 +237,11 @@ function ProductsTab() {
     let createStep = "product";
     let productToCleanup = null;
     try {
+      const pricedVariants = formData.variants.filter((variant) => variant.price !== "");
+      if (pricedVariants.length === 0) {
+        throw new Error("Enter a price for at least one size.");
+      }
+
       const slug = toProductSlug(formData.name, products);
       const product = await api("/api/admin/products", {
         method: "POST",
@@ -252,7 +257,7 @@ function ProductsTab() {
       productToCleanup = product;
       createStep = "variant";
       const skuSuffix = Date.now();
-      await Promise.all(formData.variants.map((variant, index) => api(`/api/admin/products/${product.id}/variants`, {
+      await Promise.all(pricedVariants.map((variant, index) => api(`/api/admin/products/${product.id}/variants`, {
         method: "POST",
         body: JSON.stringify({
           sku: `${product.slug}-${variant.size.toLowerCase()}-${skuSuffix}-${index}`,
@@ -323,8 +328,10 @@ function ProductsTab() {
           categoryId: productFields.categoryId || null,
         }),
       });
+      const variantsWithPrices = variants.filter((variant) => variant.regularPriceUgx !== "");
+      const variantsWithoutPrices = variants.filter((variant) => variant.regularPriceUgx === "");
       await Promise.all(
-        variants.map((variant) =>
+        variantsWithPrices.map((variant) =>
           api(`/api/admin/variants/${variant.id}`, {
             method: "PATCH",
             body: JSON.stringify({
@@ -337,6 +344,14 @@ function ProductsTab() {
               stock: Number(variant.stock),
               isActive: variant.isActive,
             }),
+          })
+        )
+      );
+      await Promise.all(
+        variantsWithoutPrices.map((variant) =>
+          api(`/api/admin/variants/${variant.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ isActive: false }),
           })
         )
       );
@@ -362,7 +377,10 @@ function ProductsTab() {
   async function handleDelete(id) {
     if (!confirm("Delete this product?")) return;
     try {
-      await api(`/api/admin/products/${id}`, { method: "DELETE" });
+      const result = await api(`/api/admin/products/${id}`, { method: "DELETE" });
+      if (result.archived) {
+        alert("This product has existing orders, so it was archived and removed from the public shop.");
+      }
       loadProducts();
     } catch (err) {
       alert("Error deleting product: " + err.message);
@@ -407,11 +425,11 @@ function ProductsTab() {
                 <legend>{variant.size} size</legend>
                 <div className="form-group">
                   <label htmlFor={`dimensions-${variant.size}`}>Dimensions</label>
-                  <input id={`dimensions-${variant.size}`} required value={variant.dimensions} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, dimensions: e.target.value } : item) })} placeholder="e.g. 72 x 78 x 10 inches" />
+                  <input id={`dimensions-${variant.size}`} required={Boolean(variant.price)} value={variant.dimensions} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, dimensions: e.target.value } : item) })} placeholder="e.g. 72 x 78 x 10 inches" />
                 </div>
                 <div className="form-group">
                   <label htmlFor={`price-${variant.size}`}>Price (UGX)</label>
-                  <input id={`price-${variant.size}`} required min="1" type="number" value={variant.price} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, price: e.target.value } : item) })} />
+                  <input id={`price-${variant.size}`} min="1" type="number" value={variant.price} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, price: e.target.value } : item) })} />
                 </div>
                 <div className="form-group">
                   <label htmlFor={`former-price-${variant.size}`}>Former price (UGX)</label>
@@ -419,7 +437,7 @@ function ProductsTab() {
                 </div>
                 <div className="form-group">
                   <label htmlFor={`stock-${variant.size}`}>Stock quantity</label>
-                  <input id={`stock-${variant.size}`} required min="0" type="number" value={variant.stock} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, stock: e.target.value } : item) })} />
+                  <input id={`stock-${variant.size}`} required={Boolean(variant.price)} min="0" type="number" value={variant.stock} onChange={(e) => setFormData({ ...formData, variants: formData.variants.map((item, itemIndex) => itemIndex === index ? { ...item, stock: e.target.value } : item) })} />
                 </div>
               </fieldset>
             ))}
@@ -476,7 +494,7 @@ function ProductsTab() {
               <div className="form-group"><label>Size</label><input required value={variant.size} onChange={(e) => updateVariantField(variant.id, "size", e.target.value)} /></div>
               <div className="form-group"><label>Thickness</label><input required value={variant.thickness} onChange={(e) => updateVariantField(variant.id, "thickness", e.target.value)} /></div>
               <div className="form-group"><label>Color</label><input required value={variant.color} onChange={(e) => updateVariantField(variant.id, "color", e.target.value)} /></div>
-              <div className="form-group"><label>Price (UGX)</label><input required min="1" type="number" value={variant.regularPriceUgx} onChange={(e) => updateVariantField(variant.id, "regularPriceUgx", e.target.value)} /></div>
+              <div className="form-group"><label>Price (UGX)</label><input min="1" type="number" value={variant.regularPriceUgx} onChange={(e) => updateVariantField(variant.id, "regularPriceUgx", e.target.value)} /></div>
               <div className="form-group"><label>Former price (UGX)</label><input min="1" type="number" value={variant.formerPriceUgx || ""} onChange={(e) => updateVariantField(variant.id, "formerPriceUgx", e.target.value)} /></div>
               <div className="form-group"><label>Stock</label><input required min="0" type="number" value={variant.stock} onChange={(e) => updateVariantField(variant.id, "stock", e.target.value)} /></div>
               <label className="admin-checkbox"><input type="checkbox" checked={variant.isActive} onChange={(e) => updateVariantField(variant.id, "isActive", e.target.checked)} /> Active variant</label>
@@ -666,6 +684,7 @@ function CategoriesTab() {
 function OrdersTab() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -691,6 +710,29 @@ function OrdersTab() {
       loadOrders();
     } catch (err) {
       alert("Error updating order: " + err.message);
+    }
+  }
+
+  async function viewOrder(orderId) {
+    try {
+      const order = await api(`/api/admin/orders/${orderId}`);
+      setSelectedOrder(order);
+    } catch (err) {
+      alert("Error viewing order: " + err.message);
+    }
+  }
+
+  async function deleteOrder(orderId) {
+    const confirmed = window.confirm("Delete this order? This cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      await api(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+      });
+      setOrders((current) => current.filter((order) => order.id !== orderId));
+    } catch (err) {
+      alert("Error deleting order: " + err.message);
     }
   }
 
@@ -736,20 +778,58 @@ function OrdersTab() {
                   <td>
                     <button
                       className="btn-secondary"
-                      onClick={() => {
-                        const details = order.items
-                          .map((item) => `${item.productName} x${item.quantity}`)
-                          .join("\n");
-                        alert(`Order Details:\n${details}`);
-                      }}
+                      onClick={() => viewOrder(order.id)}
                     >
                       View
+                    </button>
+                    <button
+                      className="btn-danger"
+                      onClick={() => deleteOrder(order.id)}
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedOrder && (
+        <div className="admin-modal-backdrop" role="presentation" onClick={() => setSelectedOrder(null)}>
+          <section className="admin-order-modal" role="dialog" aria-modal="true" aria-labelledby="order-details-title" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-modal-header">
+              <div>
+                <p className="admin-modal-eyebrow">Order details</p>
+                <h3 id="order-details-title">{selectedOrder.customerName}</h3>
+              </div>
+              <button className="admin-modal-close" type="button" aria-label="Close order details" onClick={() => setSelectedOrder(null)}>×</button>
+            </div>
+            <div className="admin-order-contact">
+              <div><span>Email</span><strong>{selectedOrder.email}</strong></div>
+              <div><span>Phone</span><strong>{selectedOrder.phone}</strong></div>
+              <div><span>Address</span><strong>{selectedOrder.deliveryAddress}</strong></div>
+              <div><span>Total</span><strong>UGX {Number(selectedOrder.totalUgx || 0).toLocaleString()}</strong></div>
+            </div>
+            <h4>Products</h4>
+            <div className="admin-order-items">
+              {(selectedOrder.items || []).map((item) => (
+                <article className="admin-order-item" key={item.id}>
+                  <div>
+                    <strong>{item.product?.name || (item.productName !== "Product" ? item.productName : null) || "Product"}</strong>
+                    <span>Size: {item.size || item.variant?.size || "-"}</span>
+                  </div>
+                  <div>
+                    <span>Product ID</span>
+                    <code>{item.productId}</code>
+                  </div>
+                  <strong>Qty {item.quantity}</strong>
+                </article>
+              ))}
+              {(!selectedOrder.items || selectedOrder.items.length === 0) && <p>No products found.</p>}
+            </div>
+          </section>
         </div>
       )}
     </div>
