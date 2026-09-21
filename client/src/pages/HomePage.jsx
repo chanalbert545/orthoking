@@ -11,7 +11,7 @@ const slides = [
 ];
 const categories = [
   ["Orthopedic Mattresses", "Supportive comfort for restorative sleep.", "/assets/orth.jpeg"],
-  ["Pillows & Toppers", "The finishing touch to your sleep setup.", "/assets/toppers.jpeg"],
+  ["Pillows & Toppers", "The finishing touch to your sleep setup.", "/assets/pillow.webp"],
   ["Home & Hotel Solutions", "Reliable comfort for every room.", "/assets/home.jpeg"],
 ];
 const fallback = [
