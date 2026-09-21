@@ -31,6 +31,28 @@ body,
 html,
 body {
   overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: 3px solid #f5c518;
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: #10243e;
+  color: #fff;
+  border-radius: 8px;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
 }
 
 a {

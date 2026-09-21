@@ -13,7 +13,7 @@ export function CheckoutPage({ settings }) {
   const { items, clear } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("mtn");
+  const [paymentMethod, setPaymentMethod] = useState("pesapal");
   const [formData, setFormData] = useState({
     customerName: "",
     email: "",
@@ -141,9 +141,7 @@ export function CheckoutPage({ settings }) {
           <section className="checkout-section">
             <div className="section-title"><span>03</span><div><h2>Payment</h2><p>All transactions are secure and encrypted.</p></div></div>
             <div className="payment-methods">
-              <label className={`payment-choice ${paymentMethod === "mtn" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="mtn" checked={paymentMethod === "mtn"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>MTN Mobile Money</strong><span>Uganda</span></label>
-              <label className={`payment-choice ${paymentMethod === "airtel" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="airtel" checked={paymentMethod === "airtel"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>Airtel Money</strong><span>Uganda</span></label>
-              {import.meta.env.VITE_PESAPAL_ENABLED === "true" && <label className={`payment-choice ${paymentMethod === "pesapal" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="pesapal" checked={paymentMethod === "pesapal"} onChange={(event) => setPaymentMethod(event.target.value)} /><strong>Pesapal</strong><span>Cards and mobile money</span></label>}
+              <label className={`payment-choice ${paymentMethod === "pesapal" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="pesapal" checked={paymentMethod === "pesapal"} onChange={(event) => setPaymentMethod(event.target.value)} /><span className="payment-brand"><img src="/assets/pesapal-logo.png" alt="PesaPal" className="payment-brand-logo" /><strong>PesaPal</strong></span><span>Cards and mobile money</span></label>
             </div>
             <p className="payment-note">You will receive payment instructions after your order is validated.</p>
           </section>

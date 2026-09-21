@@ -391,6 +391,21 @@
   font-size: .8rem;
 }
 
+.payment-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payment-brand-logo {
+  width: 56px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 4px;
+}
+
 .shipping-choice span,
 .shipping-choice strong,
 .payment-choice strong {

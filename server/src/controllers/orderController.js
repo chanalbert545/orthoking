@@ -4,6 +4,7 @@ import {
   getPesapalTransactionStatus,
 } from "../lib/pesapal.js";
 import { getMtnPaymentStatus, initiateMtnPayment } from "../lib/mtn.js";
+import { sendOrderSuccessEmail } from "../lib/mailjet.js";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -412,6 +413,14 @@ export async function verifyMtnPayment(req, res, next) {
     const amountMatches = String(statusResponse.amount || "") === String(payment.order.totalUgx);
     const currencyMatches = String(statusResponse.currency || "UGX").toUpperCase() === "UGX";
     const verified = nextPaymentStatus === "completed" && amountMatches && currencyMatches;
+    const wasCompleted = payment.paymentStatus === "completed";
+
+    const orderWithItems = verified
+      ? await prisma.order.findUnique({
+          where: { id: payment.orderId },
+          include: { items: true },
+        })
+      : null;
 
     await prisma.$transaction([
       prisma.payment.update({
@@ -427,6 +436,17 @@ export async function verifyMtnPayment(req, res, next) {
         data: verified ? { orderStatus: "processing" } : {},
       }),
     ]);
+
+    if (verified && !wasCompleted && orderWithItems) {
+      try {
+        await sendOrderSuccessEmail({
+          ...orderWithItems,
+          email: payment.order.email,
+        });
+      } catch (emailError) {
+        console.warn("Mailjet order success email failed for MTN order:", emailError.message);
+      }
+    }
 
     res.json({ paymentStatus: verified ? "completed" : nextPaymentStatus, orderStatus: verified ? "processing" : payment.order.orderStatus, verified });
   } catch (error) {
@@ -475,6 +495,13 @@ export async function handlePesapalIpn(req, res, next) {
       },
     });
 
+    const order = payment
+      ? await prisma.order.findUnique({
+          where: { id: payment.orderId },
+          include: { items: true },
+        })
+      : null;
+
     if (!payment) {
       return res.status(404).json({ error: "Payment not found" });
     }
@@ -484,6 +511,7 @@ export async function handlePesapalIpn(req, res, next) {
       : { payment_status_description: "Pending" };
     const paymentStatus = getPaymentStatus(statusResponse);
     const paidAt = paymentStatus === "completed" ? new Date() : undefined;
+    const wasCompleted = payment.paymentStatus === "completed";
 
     await prisma.$transaction([
       prisma.payment.update({
@@ -508,6 +536,17 @@ export async function handlePesapalIpn(req, res, next) {
         },
       }),
     ]);
+
+    if (paymentStatus === "completed" && !wasCompleted && order) {
+      try {
+        await sendOrderSuccessEmail({
+          ...order,
+          email: order.email,
+        });
+      } catch (emailError) {
+        console.warn("Mailjet order success email failed for PesaPal order:", emailError.message);
+      }
+    }
 
     return res.json({
       orderNotificationType: "IPN",

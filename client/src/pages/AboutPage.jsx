@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { FaqSection } from "../components/FaqSection.jsx";
+import { Seo } from "../components/Seo.jsx";
 import "../styles/public-pages.css";
 import "../styles/home.css";
 
@@ -25,7 +26,13 @@ const technologyGlossary = [
 ];
 
 export function AboutPage({ settings }) {
-  return <div className="content-page about-page">
+  return <>
+    <Seo
+      title="About Dr. Ortho King"
+      description="Learn about Dr. Ortho King, our Turkish-made orthopedic mattresses, quality promise, and better sleep mission in Uganda."
+      path="/about"
+    />
+    <div className="content-page about-page">
     <section className="page-hero page-hero-dark"><p className="eyebrow">About us</p><h1> About Us</h1><p>All you need to know about our company and our mission.</p></section>
     <section className="story-section"><div><p className="eyebrow">Our approach</p><h2>Who Are We</h2><p>Dr. Ortho King is a Uganda-based retailer of premium, genuinely Turkish-made orthopedic and posturopedic
 mattresses. We specialise in hybrid pocket-spring mattress technology -- engineering designed to relieve back
@@ -44,5 +51,6 @@ spinal alignment, and long-term durability.</p><p>{settings.tagline || "Orthoped
     <section className="offers-section"><div className="offers-heading"><p className="eyebrow">Warranty, Guarantees &amp; Current Offers</p><h2>More comfort, more confidence.</h2><p>We stand behind every mattress with practical support, clear warranty terms, and offers that add value to your purchase.</p></div><div className="offers-grid"><article><span className="offer-number">5.1</span><h3>5-Year Warranty</h3><ul><li>Every orthopedic mattress carries a 5-year warranty as standard.</li><li>Covers manufacturing defects including spring failure, structural sagging beyond normal wear, and seam or cover defects under normal household use.</li><li>Keep your receipt or invoice, which is required for warranty claims.</li></ul></article><article><span className="offer-number">5.2</span><h3>Current Promotions</h3><ul><li>30% off most Hybrid Pocket Spring and Dual Nano Spring ranges.</li><li>40% off the Belona Turkish Classic premium collection and Turkiye Cool Fabric arrivals.</li></ul></article><article><span className="offer-number">5.3</span><h3>Free Gifts With Purchase</h3><ul><li>Free memory foam luxury pillow with any hybrid pocket-spring orthopedic mattress.</li><li>Select purchases may include 2 standard pillows plus a bedspread or comforter set.</li><li>Gift bundles vary by promotion period and branch stock; confirm the active offer before quoting.</li></ul></article><article><span className="offer-number">5.4</span><h3>Delivery</h3><ul><li>Free delivery anywhere around Kampala.</li><li>Deliveries to Mbarara and other upcountry areas can be arranged.</li><li>Confirm delivery fees and lead time with your branch for the specific location.</li></ul></article></div></section>
     <section className="technology-glossary"><div className="euro-heading"><p className="eyebrow">Mattress Technology Glossary</p><h2>What makes the difference?</h2><p>Every Dr. Ortho King mattress is built around one or more of these core technologies. Here is how each one affects the way a mattress feels and performs.</p></div><div className="technology-grid">{technologyGlossary.map(([name, description]) => <article key={name}><h3>{name}</h3><p>{description}</p></article>)}</div><p className="technology-summary"><strong>In short:</strong> Pocket spring means support and motion isolation. Nano spring adds a plush top layer. Memory, latex, and H.D. foam shape comfort and feel. Cooling fabric controls temperature. Firm edge support adds durability and full-surface usability.</p></section>
     <FaqSection />
-  </div>;
+    </div>
+  </>;
 }

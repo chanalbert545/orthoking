@@ -1,5 +1,7 @@
-const apiBaseUrl =
-  process.env.PESAPAL_API_URL || "https://pay.pesapal.com/v3/api";
+const apiBaseUrl = (() => {
+  const configured = (process.env.PESAPAL_API_URL || "https://pay.pesapal.com/v3/api").trim().replace(/\/$/, "");
+  return configured.endsWith("/api") ? configured : `${configured}/api`;
+})();
 
 function requirePesapalConfig() {
   const missing = [

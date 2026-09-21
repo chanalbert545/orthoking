@@ -76,6 +76,7 @@ export function PublicLayout({ settings, children }) {
 
   return (
     <div className={location.pathname === "/" ? "public-site home-site" : "public-site"}>
+      <a href="#main-content" className="skip-link">Skip to content</a>
       <div className="header-topbar">
         <div className="header-topbar-message">
           <span className="header-topbar-promo">{promoMessage}</span>
@@ -114,7 +115,7 @@ export function PublicLayout({ settings, children }) {
           </nav>
         </div>
       </header>
-      <main>{children}</main>
+      <main id="main-content">{children}</main>
       {showScrollTop && <button className="scroll-top-button" type="button" aria-label="Back to top" title="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>}
       <a className="whatsapp-float" href="https://wa.me/256767696979" target="_blank" rel="noreferrer" aria-label="Chat with Dr. Ortho King on WhatsApp" title="Chat on WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 12.1 0C5.6 0 .4 5.2.4 11.7c0 2.1.6 4.1 1.6 5.9L.3 24l6.6-1.7a11.7 11.7 0 0 0 5.2 1.2h.1c6.4 0 11.7-5.2 11.7-11.7 0-3.1-1.2-6.1-3.4-8.3Zm-8.4 18c-1.6 0-3.2-.4-4.6-1.2l-.3-.2-3.9 1 1-3.8-.2-.3a9.7 9.7 0 1 1 8 4.5Zm5.3-7.3c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-1.8-.9-3-1.6-4.2-3.6-.3-.5.3-.5.8-1.6.1-.2.1-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.7s1.2 3.1 1.4 3.3c.2.2 2.3 3.5 5.6 4.9 2.1.9 2.5.7 3 .7.5 0 1.8-.7 2-1.3.3-.6.3-1.2.2-1.3-.1-.2-.3-.3-.6-.4Z" /></svg><span>Chat on WhatsApp</span></a>
       <footer className="site-footer">
