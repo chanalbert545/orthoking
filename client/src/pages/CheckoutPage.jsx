@@ -14,6 +14,7 @@ export function CheckoutPage({ settings }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("pesapal");
+  const [copiedCode, setCopiedCode] = useState("");
   const [formData, setFormData] = useState({
     customerName: "",
     email: "",
@@ -55,6 +56,16 @@ export function CheckoutPage({ settings }) {
       ...prev,
       [name]: value,
     }));
+  }
+
+  async function copyMerchantCode(network, code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(network);
+      window.setTimeout(() => setCopiedCode(""), 1800);
+    } catch {
+      setError("Copying is unavailable. Please select the merchant code manually.");
+    }
   }
 
   async function handleSubmit(e) {
@@ -142,8 +153,10 @@ export function CheckoutPage({ settings }) {
             <div className="section-title"><span>03</span><div><h2>Payment</h2><p>All transactions are secure and encrypted.</p></div></div>
             <div className="payment-methods">
               <label className={`payment-choice ${paymentMethod === "pesapal" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="pesapal" checked={paymentMethod === "pesapal"} onChange={(event) => setPaymentMethod(event.target.value)} /><span className="payment-brand"><img src="/assets/pesapal-logo.png" alt="PesaPal" className="payment-brand-logo" /><strong>PesaPal</strong></span><span>Cards and mobile money</span></label>
+              <label className={`payment-choice manual-payment ${paymentMethod === "mtn" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="mtn" checked={paymentMethod === "mtn"} onChange={(event) => setPaymentMethod(event.target.value)} /><span className="payment-brand"><img src="/assets/momo.jpeg" alt="MTN MoMo" className="payment-network-logo" /><strong>MTN Mobile Money</strong></span><span>Manual payment</span><button type="button" className="merchant-code mtn-merchant-code" onClick={() => copyMerchantCode("mtn", "725905")} aria-label="Copy MTN merchant code 725905"><span>Merchant code</span><strong>725905</strong><b>{copiedCode === "mtn" ? "Copied" : "Copy"}</b></button></label>
+              <label className={`payment-choice manual-payment ${paymentMethod === "airtel" ? "selected" : ""}`}><input type="radio" name="paymentMethod" value="airtel" checked={paymentMethod === "airtel"} onChange={(event) => setPaymentMethod(event.target.value)} /><span className="payment-brand"><img src="/assets/airtel-money-.png" alt="Airtel Money" className="payment-network-logo" /><strong>Airtel Money</strong></span><span>Manual payment</span><button type="button" className="merchant-code airtel-merchant-code" onClick={() => copyMerchantCode("airtel", "4427780")} aria-label="Copy Airtel merchant code 4427780"><span>Merchant code</span><strong>4427780</strong><b>{copiedCode === "airtel" ? "Copied" : "Copy"}</b></button></label>
             </div>
-            <p className="payment-note">You will receive payment instructions after your order is validated.</p>
+            {paymentMethod === "pesapal" ? <div className="manual-payment-note"><p><span className="pesapal-unavailable">PesaPal is temporarily unavailable due to technical reasons.</span> <strong>For Manual Payments:</strong> Send Proof of Payment plus a screenshot of your order to our WhatsApp.</p><a className="whatsapp-payment-link" href="https://wa.me/256767696979" target="_blank" rel="noreferrer"><span aria-hidden="true">◉</span> Tap the WhatsApp Button</a></div> : <div className="manual-payment-note"><p>These are manual payments, not live online transactions. Copy the merchant code, complete payment on your phone, then send proof of payment and a screenshot of your order to our WhatsApp number.</p><a className="whatsapp-payment-link" href="https://wa.me/256767696979" target="_blank" rel="noreferrer"><span aria-hidden="true">◉</span> Tap to send proof on WhatsApp</a></div>}
           </section>
 
           <section className="checkout-section">
@@ -160,7 +173,7 @@ export function CheckoutPage({ settings }) {
             className="btn btn-primary btn-large"
             disabled={loading}
           >
-            {loading ? "Processing..." : "Pay now"}
+            {loading ? "Processing..." : paymentMethod === "pesapal" ? "Pay now" : "Place order"}
           </button>
 
           <p className="terms">
