@@ -66,13 +66,15 @@ export function ProductPage() {
       size: selectedVariant.size,
       thickness: selectedVariant.thickness,
       color: selectedVariant.color,
-      regularPriceUgx: selectedVariant.regularPriceUgx,
+      regularPriceUgx: selectedVariant.currentPriceUgx ?? selectedVariant.regularPriceUgx,
+      formerPriceUgx: selectedVariant.formerPriceUgx,
+      promotionId: selectedVariant.promotion?.id || null,
       quantity: parseInt(quantity),
     });
 
     setCartAddedItem({
       productName: product.name,
-      priceLabel: `UGX ${Number(selectedVariant.regularPriceUgx * parseInt(quantity)).toLocaleString()}`,
+      priceLabel: `UGX ${Number((selectedVariant.currentPriceUgx ?? selectedVariant.regularPriceUgx) * parseInt(quantity)).toLocaleString()}`,
     });
     setMessage("Added to cart!");
     setTimeout(() => setMessage(""), 3000);
@@ -81,6 +83,7 @@ export function ProductPage() {
   if (loading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error">Error: {error}</div>;
   if (!product) return <div className="error">Product not found</div>;
+  const selectedPriceUgx = selectedVariant?.currentPriceUgx ?? selectedVariant?.regularPriceUgx ?? 0;
 
   return (
     <div className="product-page">
@@ -139,7 +142,8 @@ export function ProductPage() {
 
           {selectedVariant && (
             <p className="starting-price">
-              From UGX {selectedVariant.regularPriceUgx.toLocaleString()}
+              From UGX {selectedPriceUgx.toLocaleString()}
+              {selectedVariant.promotion?.name && <span className="promotion-badge">{selectedVariant.promotion.name}</span>}
             </p>
           )}
 
@@ -166,7 +170,8 @@ export function ProductPage() {
                       <span className="color">{variant.color}</span>
                     </div>
                     <div className="variant-price">
-                      UGX {variant.regularPriceUgx.toLocaleString()}
+                      UGX {(variant.currentPriceUgx ?? variant.regularPriceUgx).toLocaleString()}
+                      {variant.formerPriceUgx && variant.currentPriceUgx < variant.formerPriceUgx && <span className="former-price">UGX {variant.formerPriceUgx.toLocaleString()}</span>}
                     </div>
                     <div className="variant-stock">
                       {variant.stock > 0
@@ -207,7 +212,7 @@ export function ProductPage() {
                 <h3>Order Summary</h3>
                 <div className="summary-row">
                   <span>Unit Price:</span>
-                  <span>UGX {selectedVariant.regularPriceUgx.toLocaleString()}</span>
+                  <span>UGX {selectedPriceUgx.toLocaleString()}</span>
                 </div>
                 <div className="summary-row">
                   <span>Quantity:</span>
@@ -218,7 +223,7 @@ export function ProductPage() {
                   <span>
                     UGX{" "}
                     {(
-                      selectedVariant.regularPriceUgx * quantity
+                      selectedPriceUgx * quantity
                     ).toLocaleString()}
                   </span>
                 </div>

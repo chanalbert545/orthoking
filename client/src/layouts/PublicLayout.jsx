@@ -30,6 +30,7 @@ export function PublicLayout({ settings, children }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [promoEndsAt, setPromoEndsAt] = useState("");
+  const [activePromotion, setActivePromotion] = useState(null);
   const [countdown, setCountdown] = useState("");
   const { items } = useCart();
   const count = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -63,14 +64,26 @@ export function PublicLayout({ settings, children }) {
   }, []);
 
   useEffect(() => {
-    api("/api/promotions?active=true&limit=20")
+    let isCurrent = true;
+    const loadPromotion = () => api("/api/promotions?active=true&limit=1")
       .then((data) => {
         const nextPromotion = (data.promotions || [])[0];
-        if (nextPromotion?.endsAt) {
-          setPromoEndsAt(nextPromotion.endsAt);
-        }
+        if (!isCurrent) return;
+        setActivePromotion(nextPromotion || null);
+        setPromoEndsAt(nextPromotion?.endsAt || "");
       })
-      .catch(() => setPromoEndsAt(""));
+      .catch(() => {
+        if (!isCurrent) return;
+        setActivePromotion(null);
+        setPromoEndsAt("");
+      });
+
+    loadPromotion();
+    const timer = window.setInterval(loadPromotion, 60000);
+    return () => {
+      isCurrent = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -85,7 +98,7 @@ export function PublicLayout({ settings, children }) {
     return () => window.clearInterval(timer);
   }, [promoEndsAt]);
 
-  const promoMessage = settings.promotionTitle || "Special offer";
+  const promoMessage = activePromotion?.name?.trim() || settings.promotionTitle || "Special offer";
 
   return (
     <div className={location.pathname === "/" ? "public-site home-site" : "public-site"}>

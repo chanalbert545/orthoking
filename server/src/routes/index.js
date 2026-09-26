@@ -41,6 +41,7 @@ router.patch("/admin/settings", requireAdmin, updateAdminSettings);
 // ============ PRODUCTS ============
 // Public endpoints
 router.get("/products", productController.listProducts);
+router.get("/products/pricing", productController.getVariantPricing);
 router.get("/products/:slug", productController.getProduct);
 
 // Admin endpoints

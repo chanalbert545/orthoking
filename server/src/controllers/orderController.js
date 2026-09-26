@@ -1,10 +1,11 @@
 import { prisma } from "../lib/prisma.js";
+import { calculatePromotionPrice, findPromotionForVariant } from "../lib/promotionPricing.js";
 import {
   createPesapalPayment,
   getPesapalTransactionStatus,
 } from "../lib/pesapal.js";
 import { getMtnPaymentStatus, initiateMtnPayment } from "../lib/mtn.js";
-import { sendOrderSuccessEmail } from "../lib/mailjet.js";
+import { sendNewOrderNotificationEmail, sendOrderSuccessEmail } from "../lib/mailjet.js";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -272,21 +273,8 @@ export async function createOrder(req, res, next) {
       const variant = variants.find((v) => v.id === item.variantId);
       const quantity = item.quantity;
 
-      // Apply promotion if available
-      let unitPriceUgx = variant.regularPriceUgx;
-      let discountUgx = 0;
-
-      if (variant.promotions.length > 0) {
-        const promotion = variant.promotions[0];
-        if (promotion.discountType === "percent") {
-          discountUgx = Math.floor(
-            (variant.regularPriceUgx * promotion.percent) / 100
-          );
-        } else {
-          discountUgx = promotion.amountUgx || 0;
-        }
-        unitPriceUgx = Math.max(0, variant.regularPriceUgx - discountUgx);
-      }
+      const promotion = findPromotionForVariant(variant.promotions, variant.product, variant);
+      const { currentPriceUgx: unitPriceUgx, discountUgx } = calculatePromotionPrice(variant, promotion);
 
       const lineTotalUgx = unitPriceUgx * quantity;
       subtotalUgx += lineTotalUgx;
@@ -452,6 +440,16 @@ export async function verifyMtnPayment(req, res, next) {
 
     if (verified && !wasCompleted && orderWithItems) {
       try {
+        await sendNewOrderNotificationEmail({
+          ...orderWithItems,
+          id: payment.orderId,
+          deliveryAddress: payment.order.deliveryAddress,
+          customerName: payment.order.customerName,
+          phone: payment.order.phone,
+          email: payment.order.email,
+          totalUgx: payment.order.totalUgx,
+        });
+
         await sendOrderSuccessEmail({
           ...orderWithItems,
           email: payment.order.email,
@@ -552,6 +550,16 @@ export async function handlePesapalIpn(req, res, next) {
 
     if (paymentStatus === "completed" && !wasCompleted && order) {
       try {
+        await sendNewOrderNotificationEmail({
+          ...order,
+          id: order.id,
+          deliveryAddress: order.deliveryAddress,
+          customerName: order.customerName,
+          phone: order.phone,
+          email: order.email,
+          totalUgx: order.totalUgx,
+        });
+
         await sendOrderSuccessEmail({
           ...order,
           email: order.email,

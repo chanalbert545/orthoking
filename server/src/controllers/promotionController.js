@@ -1,8 +1,12 @@
 import { prisma } from "../lib/prisma.js";
 import { z } from "zod";
 
-const createPromotionSchema = z.object({
-  productId: z.string().uuid(),
+const promotionFieldsSchema = z.object({
+  productId: z.string().uuid().optional(),
+  productIds: z.array(z.string().uuid()).optional(),
+  allProducts: z.boolean().default(false),
+  categoryId: z.string().uuid().optional().nullable(),
+  categoryIds: z.array(z.string().uuid()).optional(),
   variantId: z.string().uuid().optional().nullable(),
   name: z.string().optional(),
   discountType: z.enum(["percent", "amount"]),
@@ -13,7 +17,15 @@ const createPromotionSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-const updatePromotionSchema = createPromotionSchema.partial();
+const createPromotionSchema = promotionFieldsSchema.refine((promotion) => {
+  const scopeCount = Number(promotion.allProducts) + Number(Boolean(promotion.categoryIds?.length || promotion.categoryId)) + Number(Boolean(promotion.productIds?.length || promotion.productId));
+  return scopeCount === 1;
+}, {
+  message: "Choose products, a category, or all products",
+  path: ["productIds"],
+});
+
+const updatePromotionSchema = promotionFieldsSchema.partial();
 const timerSchema = z.object({
   endsAt: z.string().datetime(),
 });
@@ -32,13 +44,23 @@ export async function listPromotions(req, res, next) {
       where.endsAt = { gte: new Date() };
     }
 
-    if (productId) where.productId = productId;
+    if (productId) {
+      const product = await prisma.product.findUnique({ where: { id: productId }, select: { categoryId: true } });
+      where.OR = [
+        { productId, categoryId: null },
+        { productIds: { has: productId } },
+        { allProducts: true },
+        { category: { products: { some: { id: productId } } } },
+      ];
+      if (product?.categoryId) where.OR.push({ categoryIds: { has: product.categoryId } });
+    }
 
     const [promotions, total] = await Promise.all([
       prisma.promotion.findMany({
         where,
         include: {
           product: true,
+          category: true,
           variant: true,
         },
         skip,
@@ -71,6 +93,7 @@ export async function getPromotion(req, res, next) {
       where: { id },
       include: {
         product: true,
+        category: true,
         variant: true,
       },
     });
@@ -103,13 +126,20 @@ export async function createPromotion(req, res, next) {
         .json({ error: "Amount is required for amount discounts" });
     }
 
-    // Verify product exists
-    const product = await prisma.product.findUnique({
-      where: { id: validated.productId },
-    });
-
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+    let productIds;
+    const categoryIds = [...new Set(validated.categoryIds?.length ? validated.categoryIds : validated.categoryId ? [validated.categoryId] : [])];
+    if (validated.allProducts) {
+      productIds = (await prisma.product.findMany({ where: { isActive: true }, select: { id: true } })).map((product) => product.id);
+    } else if (categoryIds.length) {
+      const categories = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true } });
+      if (categories.length !== categoryIds.length) return res.status(404).json({ error: "One or more categories were not found" });
+      productIds = (await prisma.product.findMany({ where: { categoryId: { in: categoryIds }, isActive: true }, select: { id: true } })).map((product) => product.id);
+    } else {
+      productIds = [...new Set(validated.productIds?.length ? validated.productIds : [validated.productId])];
+    }
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true } });
+    if ((!categoryIds.length && !validated.allProducts && !productIds.length) || products.length !== productIds.length) {
+      return res.status(400).json({ error: "One or more selected products were not found" });
     }
 
     // Verify variant exists if specified
@@ -118,15 +148,23 @@ export async function createPromotion(req, res, next) {
         where: { id: validated.variantId },
       });
 
-      if (!variant) {
-        return res.status(404).json({ error: "Variant not found" });
+      if (!variant || !productIds.includes(variant.productId)) {
+        return res.status(400).json({ error: "Choose a variant belonging to a selected product" });
       }
     }
 
     const promotion = await prisma.promotion.create({
-      data: validated,
+      data: {
+        ...validated,
+        productId: categoryIds.length || validated.allProducts ? null : productIds[0] ?? null,
+        productIds: categoryIds.length ? [] : productIds,
+        categoryId: categoryIds.length === 1 ? categoryIds[0] : null,
+        categoryIds,
+        allProducts: validated.allProducts,
+      },
       include: {
         product: true,
+        category: true,
         variant: true,
       },
     });
@@ -145,16 +183,35 @@ export async function updatePromotion(req, res, next) {
   try {
     const { id } = req.params;
     const validated = updatePromotionSchema.parse(req.body);
+    const existingPromotion = await prisma.promotion.findUnique({ where: { id } });
+    if (!existingPromotion) return res.status(404).json({ error: "Promotion not found" });
 
-    // Verify product if being changed
-    if (validated.productId) {
-      const product = await prisma.product.findUnique({
-        where: { id: validated.productId },
-      });
-
-      if (!product) {
-        return res.status(404).json({ error: "Product not found" });
-      }
+    const scopeChanged = ["allProducts", "categoryIds", "categoryId", "productIds", "productId"].some((field) => field in validated);
+    const allProducts = validated.allProducts ?? existingPromotion.allProducts;
+    const categoryIds = validated.categoryIds !== undefined
+      ? [...new Set(validated.categoryIds)]
+      : validated.categoryId !== undefined
+        ? validated.categoryId ? [validated.categoryId] : []
+        : existingPromotion.categoryIds?.length ? existingPromotion.categoryIds : existingPromotion.categoryId ? [existingPromotion.categoryId] : [];
+    let selectedProductIds;
+    if (allProducts) {
+      selectedProductIds = (await prisma.product.findMany({ where: { isActive: true }, select: { id: true } })).map((product) => product.id);
+    } else if (categoryIds.length) {
+      const categories = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true } });
+      if (categories.length !== categoryIds.length) return res.status(404).json({ error: "One or more categories were not found" });
+      selectedProductIds = (await prisma.product.findMany({ where: { categoryId: { in: categoryIds }, isActive: true }, select: { id: true } })).map((product) => product.id);
+    } else if (validated.productIds?.length) {
+      selectedProductIds = [...new Set(validated.productIds)];
+    } else if (validated.productId) {
+      selectedProductIds = [validated.productId];
+    } else if (scopeChanged) {
+      return res.status(400).json({ error: "Choose one or more products, a category, or all products" });
+    } else {
+      selectedProductIds = existingPromotion.productIds.length ? existingPromotion.productIds : [existingPromotion.productId];
+    }
+    const products = await prisma.product.findMany({ where: { id: { in: selectedProductIds } }, select: { id: true } });
+    if ((!categoryIds.length && !allProducts && !selectedProductIds.length) || products.length !== selectedProductIds.length) {
+      return res.status(400).json({ error: "One or more selected products were not found" });
     }
 
     // Verify variant if being changed
@@ -163,16 +220,26 @@ export async function updatePromotion(req, res, next) {
         where: { id: validated.variantId },
       });
 
-      if (!variant) {
-        return res.status(404).json({ error: "Variant not found" });
+      if (!variant || !selectedProductIds.includes(variant.productId)) {
+        return res.status(400).json({ error: "Choose a variant belonging to a selected product" });
       }
+    }
+
+    const data = { ...validated };
+    if (scopeChanged) {
+      data.productId = categoryIds.length || allProducts ? null : selectedProductIds[0] ?? null;
+      data.productIds = categoryIds.length || allProducts ? [] : selectedProductIds;
+      data.allProducts = allProducts;
+      data.categoryId = categoryIds.length === 1 ? categoryIds[0] : null;
+      data.categoryIds = allProducts ? [] : categoryIds;
     }
 
     const promotion = await prisma.promotion.update({
       where: { id },
-      data: validated,
+      data,
       include: {
         product: true,
+        category: true,
         variant: true,
       },
     });

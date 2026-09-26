@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { api } from "../../lib/api.js";
 
 const CartContext = createContext(null);
 const STORAGE_KEY = "dr-ortho-cart";
@@ -14,6 +15,43 @@ function loadCart() {
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState(loadCart);
+  const variantIds = [...new Set(items.map((item) => item.variantId))].sort();
+  const variantIdKey = variantIds.join(",");
+
+  useEffect(() => {
+    if (!variantIdKey) return undefined;
+
+    let isCurrent = true;
+    async function refreshPrices() {
+      try {
+        const data = await api(`/api/products/pricing?variantIds=${encodeURIComponent(variantIdKey)}`);
+        if (!isCurrent) return;
+
+        const pricesByVariantId = new Map((data.prices || []).map((price) => [price.variantId, price]));
+        setItems((current) => {
+          let changed = false;
+          const next = current.map((item) => {
+            const price = pricesByVariantId.get(item.variantId);
+            if (!price || (item.regularPriceUgx === price.currentPriceUgx && item.promotionId === price.promotionId)) return item;
+            changed = true;
+            return { ...item, regularPriceUgx: price.currentPriceUgx, promotionId: price.promotionId };
+          });
+
+          if (changed) localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          return changed ? next : current;
+        });
+      } catch {
+        // Keep the last known cart prices while the API is unavailable.
+      }
+    }
+
+    refreshPrices();
+    const timer = window.setInterval(refreshPrices, 60000);
+    return () => {
+      isCurrent = false;
+      window.clearInterval(timer);
+    };
+  }, [variantIdKey]);
 
   const value = useMemo(() => {
     function persist(next) {

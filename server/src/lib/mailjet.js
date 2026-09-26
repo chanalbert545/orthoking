@@ -2,6 +2,7 @@ const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
 const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
 const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL || "hello@drorthoking.com";
 const MAILJET_FROM_NAME = process.env.MAILJET_FROM_NAME || "Dr.OrthoKing";
+const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_EMAIL || "info@drorthoking.com";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("en-UG", {
@@ -13,6 +14,99 @@ function formatCurrency(value) {
 
 export function isMailjetConfigured() {
   return Boolean(MAILJET_API_KEY && MAILJET_SECRET_KEY && MAILJET_FROM_EMAIL);
+}
+
+export async function sendNewOrderNotificationEmail(order) {
+  if (!order) {
+    return { ok: false, reason: "missing-order" };
+  }
+
+  if (!ADMIN_NOTIFICATION_EMAIL) {
+    return { ok: false, reason: "admin-email-not-configured" };
+  }
+
+  if (!isMailjetConfigured()) {
+    return { ok: false, reason: "mailjet-not-configured" };
+  }
+
+  const itemLines = (order.items || [])
+    .map((item) => {
+      const productName = item.productName || item.product?.name || "Product";
+      const sizeText = item.size ? ` (${item.size})` : "";
+      const total = formatCurrency(item.lineTotalUgx ?? item.unitPriceUgx * item.quantity);
+      return `${item.quantity} x ${productName}${sizeText} - ${total}`;
+    })
+    .join("\n");
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
+      <h2 style="margin-bottom: 12px; color: #0f172a;">New order received</h2>
+      <p>You have a new order from <strong>${order.customerName || "Customer"}</strong>.</p>
+      <p><strong>Order ID:</strong> #${order.id}<br />
+      <strong>Customer email:</strong> ${order.email || "Not provided"}<br />
+      <strong>Phone:</strong> ${order.phone || "Not provided"}<br />
+      <strong>Delivery address:</strong> ${order.deliveryAddress || "Not provided"}</p>
+
+      <p><strong>Order total:</strong> ${formatCurrency(order.totalUgx)}</p>
+
+      <p><strong>Items:</strong></p>
+      <ul style="margin-top: 8px; margin-bottom: 16px; padding-left: 20px;">
+        ${(order.items || [])
+          .map((item) => {
+            const label = `${item.quantity} x ${item.productName || item.product?.name || "Product"}${item.size ? ` (${item.size})` : ""}`;
+            const total = formatCurrency(item.lineTotalUgx ?? item.unitPriceUgx * item.quantity);
+            return `<li>${label} - ${total}</li>`;
+          })
+          .join("")}
+      </ul>
+
+      <p>Please review and process this order in the admin dashboard.</p>
+    </div>
+  `;
+
+  const text = [
+    "New order received.",
+    `Order ID: #${order.id}`,
+    `Customer: ${order.customerName || "Customer"}`,
+    `Email: ${order.email || "Not provided"}`,
+    `Phone: ${order.phone || "Not provided"}`,
+    `Delivery address: ${order.deliveryAddress || "Not provided"}`,
+    `Order total: ${formatCurrency(order.totalUgx)}`,
+    "",
+    "Items:",
+    itemLines,
+    "",
+    "Please review and process this order in the admin dashboard.",
+  ].join("\n");
+
+  const response = await fetch("https://api.mailjet.com/v3.1/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString("base64")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      Messages: [
+        {
+          From: {
+            Email: MAILJET_FROM_EMAIL,
+            Name: MAILJET_FROM_NAME,
+          },
+          To: [{ Email: ADMIN_NOTIFICATION_EMAIL }],
+          Subject: `New order received #${order.id}`,
+          TextPart: text,
+          HTMLPart: html,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Mailjet API error (${response.status}): ${errorText}`);
+  }
+
+  return { ok: true, status: response.status };
 }
 
 export async function sendOrderSuccessEmail(order) {

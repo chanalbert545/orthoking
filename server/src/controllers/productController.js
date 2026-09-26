@@ -1,8 +1,43 @@
 import { prisma } from "../lib/prisma.js";
+import { calculatePromotionPrice, findPromotionForVariant } from "../lib/promotionPricing.js";
 import { z } from "zod";
 
 const productDetailCache = new Map();
 const productDetailCacheTtl = 30 * 1000;
+
+async function addCurrentPromotionPrices(products) {
+  if (products.length === 0) return products;
+
+  const now = new Date();
+  const promotions = await prisma.promotion.findMany({
+    where: {
+      isActive: true,
+      startsAt: { lte: now },
+      endsAt: { gte: now },
+    },
+    orderBy: { startsAt: "desc" },
+  });
+
+  return products.map((product) => ({
+    ...product,
+    variants: product.variants.map((variant) => {
+      const promotion = findPromotionForVariant(promotions, product, variant);
+      const pricing = calculatePromotionPrice(variant, promotion);
+      return {
+        ...variant,
+        ...pricing,
+        promotion: promotion ? {
+          id: promotion.id,
+          name: promotion.name,
+          discountType: promotion.discountType,
+          percent: promotion.percent,
+          amountUgx: promotion.amountUgx,
+          endsAt: promotion.endsAt,
+        } : null,
+      };
+    }),
+  }));
+}
 
 function isHomeFurnitureProduct(product) {
   const categoryValues = [product.category?.name, product.category?.slug];
@@ -150,6 +185,7 @@ export async function listProducts(req, res, next) {
     const pageProducts = listing === "true"
       ? orderedProducts.slice(skip, skip + pageSize)
       : hasMore ? orderedProducts.slice(0, pageSize) : orderedProducts;
+    const pricedProducts = await addCurrentPromotionPrices(pageProducts);
     const pagination = {
       page: pageNumber,
       limit: pageSize,
@@ -162,7 +198,7 @@ export async function listProducts(req, res, next) {
     }
 
     res.json({
-      products: pageProducts,
+      products: pricedProducts,
       pagination,
       hasMore,
     });
@@ -220,12 +256,55 @@ export async function getProduct(req, res, next) {
       return res.status(404).json({ error: "Product not found" });
     }
 
+    const [pricedProduct] = await addCurrentPromotionPrices([product]);
+
     productDetailCache.set(slug, {
-      product,
+      product: pricedProduct,
       expiresAt: Date.now() + productDetailCacheTtl,
     });
 
-    res.json(product);
+    res.json(pricedProduct);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Return current server-calculated prices for items already in a cart.
+export async function getVariantPricing(req, res, next) {
+  try {
+    const variantIds = typeof req.query.variantIds === "string"
+      ? req.query.variantIds.split(",").filter(Boolean)
+      : [];
+    const parsedIds = z.array(z.string().uuid()).min(1).max(100).safeParse(variantIds);
+    if (!parsedIds.success) {
+      return res.status(400).json({ error: "Provide between 1 and 100 valid variant IDs" });
+    }
+
+    const [variants, promotions] = await Promise.all([
+      prisma.productVariant.findMany({
+        where: { id: { in: parsedIds.data }, isActive: true },
+        include: { product: true },
+      }),
+      prisma.promotion.findMany({
+        where: {
+          isActive: true,
+          startsAt: { lte: new Date() },
+          endsAt: { gte: new Date() },
+        },
+        orderBy: { startsAt: "desc" },
+      }),
+    ]);
+
+    const prices = variants.map((variant) => {
+      const promotion = findPromotionForVariant(promotions, variant.product, variant);
+      return {
+        variantId: variant.id,
+        ...calculatePromotionPrice(variant, promotion),
+        promotionId: promotion?.id || null,
+      };
+    });
+
+    res.json({ prices });
   } catch (error) {
     next(error);
   }

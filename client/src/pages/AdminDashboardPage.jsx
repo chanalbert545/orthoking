@@ -1009,16 +1009,22 @@ function normalizeDateTimeLocal(value, defaultTime = "09:00") {
 
 function PromotionsTab() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [saving, setSaving] = useState(false);
   const [timerEndsAt, setTimerEndsAt] = useState("");
-  const [formData, setFormData] = useState({ productId: "", discountType: "percent", percent: "", amountUgx: "", startsAt: "", endsAt: "", name: "" });
+  const [formData, setFormData] = useState({ scope: "selected", productIds: [], categoryIds: [], discountType: "percent", percent: "", amountUgx: "", startsAt: "", endsAt: "", name: "" });
 
   useEffect(() => {
     loadPromotions();
     api("/api/products?limit=100").then((data) => setProducts(data.products || [])).catch(() => {});
+    api("/api/categories").then((data) => {
+      const roots = Array.isArray(data) ? data : data.categories || [];
+      const flattenCategories = (items) => items.flatMap((category) => [category, ...flattenCategories(category.children || [])]);
+      setCategories(flattenCategories(roots));
+    }).catch(() => {});
   }, []);
 
   async function loadPromotions() {
@@ -1032,6 +1038,24 @@ function PromotionsTab() {
 
   function updatePromotionField(field, value) {
     setFormData((current) => ({ ...current, [field]: value }));
+  }
+
+  function togglePromotionProduct(productId, checked) {
+    updatePromotionField(
+      "productIds",
+      checked
+        ? [...new Set([...formData.productIds, productId])]
+        : formData.productIds.filter((selectedId) => selectedId !== productId)
+    );
+  }
+
+  function togglePromotionCategory(categoryId, checked) {
+    updatePromotionField(
+      "categoryIds",
+      checked
+        ? [...new Set([...formData.categoryIds, categoryId])]
+        : formData.categoryIds.filter((selectedId) => selectedId !== categoryId)
+    );
   }
 
   function toIso(value) {
@@ -1048,7 +1072,9 @@ function PromotionsTab() {
   function startNewPromotion() {
     setEditingPromotion(null);
     setFormData({
-      productId: "",
+      scope: "selected",
+      productIds: [],
+      categoryIds: [],
       discountType: "percent",
       percent: "",
       amountUgx: "",
@@ -1069,7 +1095,9 @@ function PromotionsTab() {
   function startEditingPromotion(promotion) {
     setEditingPromotion(promotion);
     setFormData({
-      productId: promotion.productId,
+      scope: promotion.allProducts ? "all" : promotion.categoryIds?.length || promotion.categoryId ? "category" : "selected",
+      productIds: promotion.allProducts ? [] : promotion.productIds?.length ? promotion.productIds : [promotion.productId],
+      categoryIds: promotion.categoryIds?.length ? promotion.categoryIds : promotion.categoryId ? [promotion.categoryId] : [],
       discountType: promotion.discountType,
       percent: promotion.percent || "",
       amountUgx: promotion.amountUgx || "",
@@ -1092,13 +1120,25 @@ function PromotionsTab() {
       alert("End date must be after the start date.");
       return;
     }
+    if (formData.scope === "selected" && formData.productIds.length === 0) {
+      alert("Choose at least one product for this promotion.");
+      return;
+    }
+    if (formData.scope === "category" && formData.categoryIds.length === 0) {
+      alert("Choose at least one category for this promotion.");
+      return;
+    }
     setFormData((current) => ({ ...current, startsAt, endsAt }));
     setSaving(true);
     try {
       await api(editingPromotion ? `/api/admin/promotions/${editingPromotion.id}` : "/api/admin/promotions", {
         method: editingPromotion ? "PATCH" : "POST",
         body: JSON.stringify({
-          productId: formData.productId,
+          productId: formData.scope === "selected" ? formData.productIds[0] : undefined,
+          productIds: formData.scope === "selected" ? formData.productIds : [],
+          allProducts: formData.scope === "all",
+          categoryId: formData.scope === "category" ? formData.categoryIds[0] : null,
+          categoryIds: formData.scope === "category" ? formData.categoryIds : [],
           discountType: formData.discountType,
           percent: formData.discountType === "percent" ? Number(formData.percent) : undefined,
           amountUgx: formData.discountType === "amount" ? Number(formData.amountUgx) : undefined,
@@ -1108,7 +1148,7 @@ function PromotionsTab() {
           isActive: editingPromotion ? editingPromotion.isActive : true,
         }),
       });
-      setFormData({ productId: "", discountType: "percent", percent: "", amountUgx: "", startsAt: "", endsAt: "", name: "" });
+      setFormData({ scope: "selected", productIds: [], categoryIds: [], discountType: "percent", percent: "", amountUgx: "", startsAt: "", endsAt: "", name: "" });
       setShowForm(false);
       await loadPromotions();
     } catch (err) {
@@ -1151,8 +1191,8 @@ function PromotionsTab() {
       <h2>Promotions</h2>
       <div className="section-heading-row"><p>Choose products, set a discount, and control the shared countdown end time.</p><button className="btn btn-primary" onClick={startNewPromotion}>New promotion</button></div>
       <form className="admin-form promotion-timer-form" onSubmit={setGeneralTimer} noValidate><div className="form-group"><label htmlFor="promotion-timer">General countdown end</label><input id="promotion-timer" type="datetime-local" step="60" value={timerEndsAt} onChange={(event) => setTimerEndsAt(event.target.value)} onBlur={(event) => { const normalized = normalizeDateTimeLocal(event.target.value, "23:59"); if (normalized) setTimerEndsAt(normalized); }} /></div><button className="btn btn-secondary" type="submit">Apply to active promotions</button></form>
-      {showForm && <form className="admin-form blog-form" onSubmit={savePromotion} noValidate><div className="section-heading-row"><h3>{editingPromotion ? "Edit promotion" : "New promotion"}</h3><button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-product">Product</label><select id="promotion-product" required value={formData.productId} onChange={(event) => updatePromotionField("productId", event.target.value)}><option value="">Choose a product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div><div className="form-group"><label htmlFor="promotion-name">Promotion name</label><input id="promotion-name" value={formData.name} onChange={(event) => updatePromotionField("name", event.target.value)} placeholder="Weekend sale" /></div></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-type">Discount type</label><select id="promotion-type" value={formData.discountType} onChange={(event) => updatePromotionField("discountType", event.target.value)}><option value="percent">Percentage</option><option value="amount">Fixed UGX amount</option></select></div>{formData.discountType === "percent" ? <div className="form-group"><label htmlFor="promotion-percent">Discount percent</label><input id="promotion-percent" required type="number" min="1" max="100" value={formData.percent} onChange={(event) => updatePromotionField("percent", event.target.value)} /></div> : <div className="form-group"><label htmlFor="promotion-amount">Discount amount (UGX)</label><input id="promotion-amount" required type="number" min="1" value={formData.amountUgx} onChange={(event) => updatePromotionField("amountUgx", event.target.value)} /></div>}</div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-start">Starts</label><input id="promotion-start" type="datetime-local" step="60" value={formData.startsAt} onChange={(event) => updatePromotionField("startsAt", event.target.value)} onBlur={(event) => commitDateTimeField("startsAt", event.target.value, "09:00")} /></div><div className="form-group"><label htmlFor="promotion-end">Ends</label><input id="promotion-end" type="datetime-local" step="60" value={formData.endsAt} onChange={(event) => updatePromotionField("endsAt", event.target.value)} onBlur={(event) => commitDateTimeField("endsAt", event.target.value, "23:59")} /></div></div><p className="form-hint">If the time shows as blank, click out of the field or pick a time — we default to 9:00 for start and 23:59 for end.</p><button className="btn btn-primary" disabled={saving} type="submit">{saving ? "Saving..." : editingPromotion ? "Save changes" : "Create promotion"}</button></form>}
-      {promotions.length ? <div className="data-table"><table><thead><tr><th>Promotion</th><th>Discount</th><th>Ends</th><th>Status</th><th>Actions</th></tr></thead><tbody>{promotions.map((promotion) => <tr key={promotion.id}><td><strong>{promotion.name || "Promotion"}</strong><br /><small>{promotion.product?.name}</small></td><td>{promotion.discountType === "percent" ? `${promotion.percent}%` : `UGX ${promotion.amountUgx?.toLocaleString()}`}</td><td>{new Date(promotion.endsAt).toLocaleString()}</td><td>{promotion.isActive && new Date(promotion.endsAt) >= new Date() ? "Active" : "Inactive"}</td><td><button className="btn-secondary" onClick={() => startEditingPromotion(promotion)}>Edit</button> <button className="btn-danger" onClick={() => deletePromotion(promotion.id)}>Delete</button></td></tr>)}</tbody></table></div> : <div className="empty-content"><h3>No promotions yet.</h3><p>Add promoted products here and they will appear on the homepage and shop page.</p></div>}
+      {showForm && <form className="admin-form blog-form" onSubmit={savePromotion} noValidate><div className="section-heading-row"><h3>{editingPromotion ? "Edit promotion" : "New promotion"}</h3><button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-scope">Applies to</label><select id="promotion-scope" value={formData.scope} onChange={(event) => updatePromotionField("scope", event.target.value)}><option value="selected">Selected products</option><option value="category">Product categories</option><option value="all">All products</option></select></div><div className="form-group"><label htmlFor="promotion-name">Promotion name</label><input id="promotion-name" value={formData.name} onChange={(event) => updatePromotionField("name", event.target.value)} placeholder="Weekend sale" /></div></div>{formData.scope === "selected" && <fieldset className="promotion-product-fieldset"><legend>Products</legend><div className="promotion-product-list">{products.map((product) => <label className="admin-checkbox promotion-product-option" htmlFor={`promotion-product-${product.id}`} key={product.id}><input id={`promotion-product-${product.id}`} type="checkbox" checked={formData.productIds.includes(product.id)} onChange={(event) => togglePromotionProduct(product.id, event.target.checked)} />{product.name}</label>)}</div></fieldset>}{formData.scope === "category" && <fieldset className="promotion-product-fieldset"><legend>Categories</legend><div className="promotion-product-list">{categories.map((category) => <label className="admin-checkbox promotion-product-option" htmlFor={`promotion-category-${category.id}`} key={category.id}><input id={`promotion-category-${category.id}`} type="checkbox" checked={formData.categoryIds.includes(category.id)} onChange={(event) => togglePromotionCategory(category.id, event.target.checked)} />{category.name}</label>)}</div></fieldset>}<div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-type">Discount type</label><select id="promotion-type" value={formData.discountType} onChange={(event) => updatePromotionField("discountType", event.target.value)}><option value="percent">Percentage</option><option value="amount">Fixed UGX amount</option></select></div>{formData.discountType === "percent" ? <div className="form-group"><label htmlFor="promotion-percent">Percent off former price</label><input id="promotion-percent" required type="number" min="1" max="100" value={formData.percent} onChange={(event) => updatePromotionField("percent", event.target.value)} /></div> : <div className="form-group"><label htmlFor="promotion-amount">Discount amount (UGX)</label><input id="promotion-amount" required type="number" min="1" value={formData.amountUgx} onChange={(event) => updatePromotionField("amountUgx", event.target.value)} /></div>}</div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-start">Starts</label><input id="promotion-start" type="datetime-local" step="60" value={formData.startsAt} onChange={(event) => updatePromotionField("startsAt", event.target.value)} onBlur={(event) => commitDateTimeField("startsAt", event.target.value, "09:00")} /></div><div className="form-group"><label htmlFor="promotion-end">Ends</label><input id="promotion-end" type="datetime-local" step="60" value={formData.endsAt} onChange={(event) => updatePromotionField("endsAt", event.target.value)} onBlur={(event) => commitDateTimeField("endsAt", event.target.value, "23:59")} /></div></div><p className="form-hint">If the time shows as blank, click out of the field or pick a time — we default to 9:00 for start and 23:59 for end.</p><button className="btn btn-primary" disabled={saving} type="submit">{saving ? "Saving..." : editingPromotion ? "Save changes" : "Create promotion"}</button></form>}
+      {promotions.length ? <div className="data-table"><table><thead><tr><th>Promotion</th><th>Discount</th><th>Ends</th><th>Status</th><th>Actions</th></tr></thead><tbody>{promotions.map((promotion) => { const selectedIds = promotion.productIds?.length ? promotion.productIds : [promotion.productId]; const selectedCategoryIds = promotion.categoryIds?.length ? promotion.categoryIds : promotion.categoryId ? [promotion.categoryId] : []; const scopeLabel = promotion.allProducts ? "All products" : selectedCategoryIds.length ? selectedCategoryIds.map((id) => categories.find((category) => category.id === id)?.name || (id === promotion.categoryId ? promotion.category?.name : null)).filter(Boolean).join(", ") || "Categories" : selectedIds.map((id) => products.find((product) => product.id === id)?.name).filter(Boolean).join(", "); return <tr key={promotion.id}><td><strong>{promotion.name || "Promotion"}</strong><br /><small>{scopeLabel || promotion.product?.name}</small></td><td>{promotion.discountType === "percent" ? `${promotion.percent}%` : `UGX ${promotion.amountUgx?.toLocaleString()}`}</td><td>{new Date(promotion.endsAt).toLocaleString()}</td><td>{promotion.isActive && new Date(promotion.endsAt) >= new Date() ? "Active" : "Inactive"}</td><td><button className="btn-secondary" onClick={() => startEditingPromotion(promotion)}>Edit</button> <button className="btn-danger" onClick={() => deletePromotion(promotion.id)}>Delete</button></td></tr>; })}</tbody></table></div> : <div className="empty-content"><h3>No promotions yet.</h3><p>Add promoted products here and they will appear on the homepage and shop page.</p></div>}
     </div>
   );
 }

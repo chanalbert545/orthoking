@@ -33,12 +33,23 @@ export function PromotionsPage() {
   }, []);
 
   const promotedProducts = useMemo(() => {
-    const productMap = new Map(products.map((product) => [product.id, product]));
-    const explicitPromotions = new Map(promotions.map((promotion) => [promotion.productId, promotion]));
+    const explicitPromotions = new Map();
+    promotions.forEach((promotion) => {
+      const selectedIds = promotion.productIds?.length ? promotion.productIds : [promotion.productId];
+      const targetCategoryIds = promotion.categoryIds?.length ? promotion.categoryIds : promotion.categoryId ? [promotion.categoryId] : [];
+      const targetIds = promotion.allProducts
+        ? products.map((product) => product.id)
+        : targetCategoryIds.length
+          ? products.filter((product) => targetCategoryIds.includes(product.categoryId || product.category?.id)).map((product) => product.id)
+          : selectedIds;
+      targetIds.forEach((id) => {
+        if (!explicitPromotions.has(id)) explicitPromotions.set(id, promotion);
+      });
+    });
     return products
       .filter((product) => new Date(product.createdAt) <= promotionCutoff || explicitPromotions.has(product.id))
-      .map((product) => ({ promotion: explicitPromotions.get(product.id), product: productMap.get(product.id) || product }));
+      .map((product) => ({ promotion: explicitPromotions.get(product.id), product }));
   }, [products, promotions]);
 
-  return <div className="content-page promotions-page"><section className="page-hero"><p className="eyebrow">Limited-time offers</p><h1>Shop all promotions.</h1><p>Explore every product currently included in our active offers.</p></section><main className="shop-products promotion-products">{loading ? <div className="loading">Loading promotions...</div> : promotedProducts.length === 0 ? <div className="empty-content"><h2>No active promotions right now.</h2><p>Check back soon for the next offer.</p><Link to="/shop" className="red-link">Browse all products →</Link></div> : <div className="products-grid">{promotedProducts.map(({ promotion, product }) => { const image = product.images?.[0]; const variant = preferredVariant(product.variants); const formerPrice = variant?.formerPriceUgx; const currentPrice = variant?.regularPriceUgx; return <Link key={product.id} to={`/products/${product.slug}`} className="product-card"><div className="product-image-wrap">{image?.publicUrl ? <img src={image.publicUrl} alt={image.altText || product.name} className="product-image" loading="lazy" decoding="async" /> : <div className="image-placeholder">No image</div>}</div><div className="product-info">{promotion && <p className="promotion-badge">{promotion.discountType === "percent" ? `${promotion.percent}% off` : `UGX ${promotion.amountUgx?.toLocaleString()} off`}</p>}<h3>{product.name}</h3>{formerPrice && <p className="former-price">Former price: UGX {formerPrice.toLocaleString()}</p>}{currentPrice && <p className="product-price">From: UGX {currentPrice.toLocaleString()}</p>}</div></Link>; })}</div>}</main></div>;
+  return <div className="content-page promotions-page"><section className="page-hero"><p className="eyebrow">Limited-time offers</p><h1>Shop all promotions.</h1><p>Explore every product currently included in our active offers.</p></section><main className="shop-products promotion-products">{loading ? <div className="loading">Loading promotions...</div> : promotedProducts.length === 0 ? <div className="empty-content"><h2>No active promotions right now.</h2><p>Check back soon for the next offer.</p><Link to="/shop" className="red-link">Browse all products →</Link></div> : <div className="products-grid">{promotedProducts.map(({ promotion, product }) => { const image = product.images?.[0]; const variant = preferredVariant(product.variants); const formerPrice = variant?.formerPriceUgx; const currentPrice = variant?.currentPriceUgx ?? variant?.regularPriceUgx; return <Link key={product.id} to={`/products/${product.slug}`} className="product-card"><div className="product-image-wrap">{image?.publicUrl ? <img src={image.publicUrl} alt={image.altText || product.name} className="product-image" loading="lazy" decoding="async" /> : <div className="image-placeholder">No image</div>}</div><div className="product-info">{promotion && <p className="promotion-badge">{promotion.name || (promotion.discountType === "percent" ? `${promotion.percent}% off` : `UGX ${promotion.amountUgx?.toLocaleString()} off`)}</p>}<h3>{product.name}</h3>{formerPrice && <p className="former-price">Former price: UGX {formerPrice.toLocaleString()}</p>}{currentPrice && <p className="product-price">From: UGX {currentPrice.toLocaleString()}</p>}</div></Link>; })}</div>}</main></div>;
 }

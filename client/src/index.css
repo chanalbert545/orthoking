@@ -649,17 +649,19 @@ textarea {
   }
 
   .public-site .site-header {
-    top: 45px;
+    top: 0;
     left: 0;
     right: 0;
     width: 100%;
+    padding-top: 45px;
+    z-index: 19;
     margin: 0;
     border-radius: 0;
-    background: rgba(0, 0, 0, 0.0);
+    background: rgba(0, 0, 0, 1);
   }
 
   .public-site:not(.home-site) .site-header {
-    top: 0;
+    top: 0px;
     z-index: 19;
     padding-top: 45px;
     background: #000;
@@ -751,7 +753,7 @@ textarea {
   .public-site.home-site .nav {
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
-    background: rgba(0, 0, 0, 0.96);
+    background: black;
 
     border: 1px solid rgba(255, 255, 255, 0.1);
   }

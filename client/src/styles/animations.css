@@ -76,15 +76,6 @@
   }
 }
 
-@keyframes hero-crossfade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes topbar-shimmer {
   0% {
     background-position: 100% 50%;
@@ -176,7 +167,7 @@
 
 /* Home hero */
 .euro-hero > picture img {
-  animation: hero-crossfade 0.9s ease both, hero-ken-burns 8s ease-out both;
+  animation: hero-ken-burns 8s ease-out both;
 }
 
 .hero-slide-panel {

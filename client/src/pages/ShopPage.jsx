@@ -117,7 +117,14 @@ export function ShopPage() {
     }), [visibleProducts]);
 
   const promotionProducts = useMemo(() => {
-    const explicitIds = new Set(promotions.map((promotion) => promotion.productId));
+    const explicitIds = new Set(promotions.flatMap((promotion) => {
+      if (promotion.allProducts) return products.map((product) => product.id);
+      const categoryIds = promotion.categoryIds?.length ? promotion.categoryIds : promotion.categoryId ? [promotion.categoryId] : [];
+      if (categoryIds.length) {
+        return products.filter((product) => categoryIds.includes(product.categoryId || product.category?.id)).map((product) => product.id);
+      }
+      return promotion.productIds?.length ? promotion.productIds : [promotion.productId];
+    }));
     return products.filter((product) => new Date(product.createdAt) <= promotionCutoff || explicitIds.has(product.id));
   }, [products, promotions]);
 
@@ -134,6 +141,7 @@ export function ShopPage() {
 
   function handleAddToCart(product, variant) {
     if (!variant || variant.stock < 1) return;
+    const currentPriceUgx = variant.currentPriceUgx ?? variant.regularPriceUgx;
     addItem({
       variantId: variant.id,
       productId: product.id,
@@ -141,13 +149,14 @@ export function ShopPage() {
       size: variant.size,
       thickness: variant.thickness,
       color: variant.color,
-      regularPriceUgx: variant.regularPriceUgx,
+      regularPriceUgx: currentPriceUgx,
+      promotionId: variant.promotion?.id || null,
       quantity: 1,
     });
     setAddedProductId(product.id);
     setCartAddedItem({
       productName: `${product.name} (${variant.size})`,
-      priceLabel: `UGX ${Number(variant.regularPriceUgx).toLocaleString()}`,
+      priceLabel: `UGX ${Number(currentPriceUgx).toLocaleString()}`,
     });
     window.setTimeout(() => setAddedProductId(null), 1800);
   }
@@ -198,6 +207,7 @@ export function ShopPage() {
                   const imageUrl = image?.publicUrl || product.image;
                   const displayName = variant?.size ? `${product.name} (${variant.size})` : product.name;
                   const priceVariant = variant || preferredVariant(product.variants);
+                  const currentPriceUgx = priceVariant?.currentPriceUgx ?? priceVariant?.regularPriceUgx;
                   const card = <>
                     <div className="product-image-wrap">{imageUrl ? <img src={imageUrl} alt={image?.altText || displayName} className="product-image" loading="lazy" decoding="async" /> : <div className="image-placeholder">No image</div>}</div>
                     <div className="product-info">
@@ -207,7 +217,8 @@ export function ShopPage() {
                           {product.description.substring(0, 100)}...
                         </p>
                       )}
-                      {priceVariant?.regularPriceUgx && <p className="product-price">UGX {priceVariant.regularPriceUgx.toLocaleString()}</p>}
+                      {priceVariant?.promotion?.name && <p className="promotion-badge">{priceVariant.promotion.name}</p>}
+                      {currentPriceUgx && <p className="product-price">UGX {currentPriceUgx.toLocaleString()}</p>}
                       {priceVariant?.formerPriceUgx && <p className="former-price">UGX {priceVariant.formerPriceUgx.toLocaleString()}</p>}
                     </div>
                   </>;

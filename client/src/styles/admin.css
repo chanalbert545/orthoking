@@ -614,6 +614,55 @@
   width: auto;
 }
 
+.promotion-product-fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 22px;
+  border: 0;
+}
+
+.promotion-product-fieldset legend {
+  margin-bottom: 7px;
+  color: #10243e;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.promotion-product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  border: 1px solid #d8d5cf;
+  border-radius: 8px;
+}
+
+.form-group .promotion-product-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 6px;
+  color: #242424;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.form-group .promotion-product-option input {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  accent-color: #c62828;
+}
+
 .variant-edit {
   display: grid;
   grid-template-columns: repeat(6, minmax(100px, 1fr));
