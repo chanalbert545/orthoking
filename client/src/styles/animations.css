@@ -1,0 +1,365 @@
+/* Site-wide motion — respects accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@keyframes site-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes site-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes site-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes site-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-ken-burns {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes hero-crossfade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes topbar-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-gentle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes cart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes scroll-top-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Shell entrance */
+.public-site .header-topbar {
+  animation: site-slide-down 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.public-site .site-header {
+  animation: site-slide-down 0.6s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.public-site .header-topbar-promo {
+  display: inline-block;
+  animation: site-fade-in 0.8s 0.2s ease both;
+}
+
+/* Route transition */
+.route-enter {
+  animation: site-route-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal.reveal-fade {
+  transform: none;
+}
+
+.reveal.reveal-scale {
+  transform: scale(0.96);
+}
+
+.reveal.reveal-scale.revealed {
+  transform: scale(1);
+}
+
+/* Home hero */
+.euro-hero > picture img {
+  animation: hero-crossfade 0.9s ease both, hero-ken-burns 8s ease-out both;
+}
+
+.hero-slide-panel {
+  animation: hero-slide-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-slide-panel h1 {
+  animation: hero-slide-in 0.7s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-slide-panel > p:not(.eyebrow) {
+  animation: hero-slide-in 0.7s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-slide-panel > div {
+  animation: hero-slide-in 0.7s 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.slide-dots button {
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    width 0.25s ease;
+}
+
+.slide-dots button:hover {
+  transform: scaleY(1.6);
+}
+
+.slide-dots button.selected {
+  width: 40px;
+}
+
+/* Interactive polish */
+.euro-button,
+.button,
+.btn,
+.nav a.shop-btn {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    background 0.25s ease,
+    color 0.25s ease;
+}
+
+.euro-button:active,
+.button:active,
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.category-card,
+.home-product,
+.product-card,
+.article-row > a,
+.journal .article-row > a {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+}
+
+.category-card:hover,
+.article-row > a:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px rgba(16, 36, 62, 0.14);
+}
+
+.whatsapp-float {
+  animation: float-gentle 3.5s ease-in-out infinite;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.whatsapp-float:hover {
+  animation: none;
+}
+
+.cart-count.cart-count-pop {
+  animation: cart-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scroll-top-button.scroll-top-enter {
+  animation: scroll-top-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.site-footer {
+  animation: site-fade-in 0.8s 0.15s ease both;
+}
+
+.footer-social a {
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
+}
+
+.footer-social a:hover {
+  transform: translateY(-3px) scale(1.06);
+}
+
+.brand img {
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.brand:hover img {
+  transform: scale(1.03);
+}
+
+/* FAQ accordion */
+.faq-item {
+  transition: box-shadow 0.3s ease;
+}
+
+.faq-item.open {
+  box-shadow: 0 12px 28px rgba(16, 36, 62, 0.08);
+}
+
+.faq-answer {
+  overflow: hidden;
+  animation: faq-answer-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes faq-answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.faq-toggle {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.faq-item.open .faq-toggle {
+  transform: scale(1.15);
+}
+
+.faq-question {
+  transition: color 0.2s ease;
+}
+
+/* Countdown tick */
+.countdown-timer b {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.countdown-timer span:focus-within b,
+.countdown-timer:hover b {
+  transform: scale(1.04);
+}
+
+.home-promotion-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-promotion-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  animation: promo-sheen 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes promo-sheen {
+  0%,
+  70% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

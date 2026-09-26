@@ -977,6 +977,36 @@ function GalleryTab() {
   );
 }
 
+function isCompleteDateTimeLocal(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value);
+}
+
+function toDateTimeLocalFromDate(date) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function nowDateTimeLocal() {
+  const date = new Date();
+  date.setSeconds(0, 0);
+  return toDateTimeLocalFromDate(date);
+}
+
+function dateTimeLocalDaysFromNow(days, hours = 23, minutes = 59) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(hours, minutes, 0, 0);
+  return toDateTimeLocalFromDate(date);
+}
+
+function normalizeDateTimeLocal(value, defaultTime = "09:00") {
+  if (!value) return "";
+  if (isCompleteDateTimeLocal(value)) return value;
+  const datePart = value.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return `${datePart}T${defaultTime}`;
+  return "";
+}
+
 function PromotionsTab() {
   const [products, setProducts] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -1017,8 +1047,23 @@ function PromotionsTab() {
 
   function startNewPromotion() {
     setEditingPromotion(null);
-    setFormData({ productId: "", discountType: "percent", percent: "", amountUgx: "", startsAt: "", endsAt: "", name: "" });
+    setFormData({
+      productId: "",
+      discountType: "percent",
+      percent: "",
+      amountUgx: "",
+      startsAt: nowDateTimeLocal(),
+      endsAt: dateTimeLocalDaysFromNow(7),
+      name: "",
+    });
     setShowForm(true);
+  }
+
+  function commitDateTimeField(field, value, defaultTime) {
+    const normalized = normalizeDateTimeLocal(value, defaultTime);
+    if (normalized) {
+      updatePromotionField(field, normalized);
+    }
   }
 
   function startEditingPromotion(promotion) {
@@ -1037,6 +1082,17 @@ function PromotionsTab() {
 
   async function savePromotion(event) {
     event.preventDefault();
+    const startsAt = normalizeDateTimeLocal(formData.startsAt, "09:00");
+    const endsAt = normalizeDateTimeLocal(formData.endsAt, "23:59");
+    if (!isCompleteDateTimeLocal(startsAt) || !isCompleteDateTimeLocal(endsAt)) {
+      alert("Please choose a full start and end date and time.");
+      return;
+    }
+    if (new Date(endsAt) <= new Date(startsAt)) {
+      alert("End date must be after the start date.");
+      return;
+    }
+    setFormData((current) => ({ ...current, startsAt, endsAt }));
     setSaving(true);
     try {
       await api(editingPromotion ? `/api/admin/promotions/${editingPromotion.id}` : "/api/admin/promotions", {
@@ -1046,8 +1102,8 @@ function PromotionsTab() {
           discountType: formData.discountType,
           percent: formData.discountType === "percent" ? Number(formData.percent) : undefined,
           amountUgx: formData.discountType === "amount" ? Number(formData.amountUgx) : undefined,
-          startsAt: toIso(formData.startsAt),
-          endsAt: toIso(formData.endsAt),
+          startsAt: toIso(startsAt),
+          endsAt: toIso(endsAt),
           name: formData.name || undefined,
           isActive: editingPromotion ? editingPromotion.isActive : true,
         }),
@@ -1064,8 +1120,14 @@ function PromotionsTab() {
 
   async function setGeneralTimer(event) {
     event.preventDefault();
+    const endsAt = normalizeDateTimeLocal(timerEndsAt, "23:59");
+    if (!isCompleteDateTimeLocal(endsAt)) {
+      alert("Please choose a full countdown end date and time.");
+      return;
+    }
+    setTimerEndsAt(endsAt);
     try {
-      const result = await api("/api/admin/promotions/timer", { method: "PATCH", body: JSON.stringify({ endsAt: toIso(timerEndsAt) }) });
+      const result = await api("/api/admin/promotions/timer", { method: "PATCH", body: JSON.stringify({ endsAt: toIso(endsAt) }) });
       alert(`Updated ${result.updated} promotion${result.updated === 1 ? "" : "s"}.`);
       setTimerEndsAt("");
       await loadPromotions();
@@ -1088,8 +1150,8 @@ function PromotionsTab() {
     <div className="tab-content">
       <h2>Promotions</h2>
       <div className="section-heading-row"><p>Choose products, set a discount, and control the shared countdown end time.</p><button className="btn btn-primary" onClick={startNewPromotion}>New promotion</button></div>
-      <form className="admin-form promotion-timer-form" onSubmit={setGeneralTimer}><div className="form-group"><label htmlFor="promotion-timer">General countdown end</label><input id="promotion-timer" required type="datetime-local" value={timerEndsAt} onChange={(event) => setTimerEndsAt(event.target.value)} /></div><button className="btn btn-secondary" type="submit">Apply to active promotions</button></form>
-      {showForm && <form className="admin-form blog-form" onSubmit={savePromotion}><div className="section-heading-row"><h3>{editingPromotion ? "Edit promotion" : "New promotion"}</h3><button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-product">Product</label><select id="promotion-product" required value={formData.productId} onChange={(event) => updatePromotionField("productId", event.target.value)}><option value="">Choose a product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div><div className="form-group"><label htmlFor="promotion-name">Promotion name</label><input id="promotion-name" value={formData.name} onChange={(event) => updatePromotionField("name", event.target.value)} placeholder="Weekend sale" /></div></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-type">Discount type</label><select id="promotion-type" value={formData.discountType} onChange={(event) => updatePromotionField("discountType", event.target.value)}><option value="percent">Percentage</option><option value="amount">Fixed UGX amount</option></select></div>{formData.discountType === "percent" ? <div className="form-group"><label htmlFor="promotion-percent">Discount percent</label><input id="promotion-percent" required type="number" min="1" max="100" value={formData.percent} onChange={(event) => updatePromotionField("percent", event.target.value)} /></div> : <div className="form-group"><label htmlFor="promotion-amount">Discount amount (UGX)</label><input id="promotion-amount" required type="number" min="1" value={formData.amountUgx} onChange={(event) => updatePromotionField("amountUgx", event.target.value)} /></div>}</div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-start">Starts</label><input id="promotion-start" required type="datetime-local" value={formData.startsAt} onChange={(event) => updatePromotionField("startsAt", event.target.value)} /></div><div className="form-group"><label htmlFor="promotion-end">Ends</label><input id="promotion-end" required type="datetime-local" value={formData.endsAt} onChange={(event) => updatePromotionField("endsAt", event.target.value)} /></div></div><button className="btn btn-primary" disabled={saving} type="submit">{saving ? "Saving..." : editingPromotion ? "Save changes" : "Create promotion"}</button></form>}
+      <form className="admin-form promotion-timer-form" onSubmit={setGeneralTimer} noValidate><div className="form-group"><label htmlFor="promotion-timer">General countdown end</label><input id="promotion-timer" type="datetime-local" step="60" value={timerEndsAt} onChange={(event) => setTimerEndsAt(event.target.value)} onBlur={(event) => { const normalized = normalizeDateTimeLocal(event.target.value, "23:59"); if (normalized) setTimerEndsAt(normalized); }} /></div><button className="btn btn-secondary" type="submit">Apply to active promotions</button></form>
+      {showForm && <form className="admin-form blog-form" onSubmit={savePromotion} noValidate><div className="section-heading-row"><h3>{editingPromotion ? "Edit promotion" : "New promotion"}</h3><button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-product">Product</label><select id="promotion-product" required value={formData.productId} onChange={(event) => updatePromotionField("productId", event.target.value)}><option value="">Choose a product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></div><div className="form-group"><label htmlFor="promotion-name">Promotion name</label><input id="promotion-name" value={formData.name} onChange={(event) => updatePromotionField("name", event.target.value)} placeholder="Weekend sale" /></div></div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-type">Discount type</label><select id="promotion-type" value={formData.discountType} onChange={(event) => updatePromotionField("discountType", event.target.value)}><option value="percent">Percentage</option><option value="amount">Fixed UGX amount</option></select></div>{formData.discountType === "percent" ? <div className="form-group"><label htmlFor="promotion-percent">Discount percent</label><input id="promotion-percent" required type="number" min="1" max="100" value={formData.percent} onChange={(event) => updatePromotionField("percent", event.target.value)} /></div> : <div className="form-group"><label htmlFor="promotion-amount">Discount amount (UGX)</label><input id="promotion-amount" required type="number" min="1" value={formData.amountUgx} onChange={(event) => updatePromotionField("amountUgx", event.target.value)} /></div>}</div><div className="blog-form-grid"><div className="form-group"><label htmlFor="promotion-start">Starts</label><input id="promotion-start" type="datetime-local" step="60" value={formData.startsAt} onChange={(event) => updatePromotionField("startsAt", event.target.value)} onBlur={(event) => commitDateTimeField("startsAt", event.target.value, "09:00")} /></div><div className="form-group"><label htmlFor="promotion-end">Ends</label><input id="promotion-end" type="datetime-local" step="60" value={formData.endsAt} onChange={(event) => updatePromotionField("endsAt", event.target.value)} onBlur={(event) => commitDateTimeField("endsAt", event.target.value, "23:59")} /></div></div><p className="form-hint">If the time shows as blank, click out of the field or pick a time — we default to 9:00 for start and 23:59 for end.</p><button className="btn btn-primary" disabled={saving} type="submit">{saving ? "Saving..." : editingPromotion ? "Save changes" : "Create promotion"}</button></form>}
       {promotions.length ? <div className="data-table"><table><thead><tr><th>Promotion</th><th>Discount</th><th>Ends</th><th>Status</th><th>Actions</th></tr></thead><tbody>{promotions.map((promotion) => <tr key={promotion.id}><td><strong>{promotion.name || "Promotion"}</strong><br /><small>{promotion.product?.name}</small></td><td>{promotion.discountType === "percent" ? `${promotion.percent}%` : `UGX ${promotion.amountUgx?.toLocaleString()}`}</td><td>{new Date(promotion.endsAt).toLocaleString()}</td><td>{promotion.isActive && new Date(promotion.endsAt) >= new Date() ? "Active" : "Inactive"}</td><td><button className="btn-secondary" onClick={() => startEditingPromotion(promotion)}>Edit</button> <button className="btn-danger" onClick={() => deletePromotion(promotion.id)}>Delete</button></td></tr>)}</tbody></table></div> : <div className="empty-content"><h3>No promotions yet.</h3><p>Add promoted products here and they will appear on the homepage and shop page.</p></div>}
     </div>
   );

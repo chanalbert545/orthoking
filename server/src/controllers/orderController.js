@@ -228,6 +228,7 @@ export async function createOrder(req, res, next) {
     const deliveryAddress = [validated.address, validated.apartment, validated.city, validated.country].filter(Boolean).join(", ");
 
     if (validated.paymentMethod === "pesapal" && process.env.PESAPAL_ENABLED !== "true") {
+      console.warn("[orders:create] Rejected Pesapal order: PESAPAL_ENABLED is not true");
       return res.status(400).json({ error: "Pesapal is temporarily unavailable" });
     }
 
@@ -256,6 +257,10 @@ export async function createOrder(req, res, next) {
     });
 
     if (variants.length !== variantIds.length) {
+      console.warn("[orders:create] Rejected order: one or more variants were not found", {
+        requestedVariantCount: variantIds.length,
+        foundVariantCount: variants.length,
+      });
       return res.status(400).json({ error: "Some variants not found" });
     }
 
@@ -393,7 +398,15 @@ export async function createOrder(req, res, next) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ errors: error.errors });
+      const issues = error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      }));
+      console.warn("[orders:create] Request validation failed", { issues });
+      return res.status(400).json({
+        error: issues.map(({ path, message }) => `${path}: ${message}`).join("; "),
+        errors: error.issues,
+      });
     }
     next(error);
   }

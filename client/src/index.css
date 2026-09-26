@@ -295,7 +295,7 @@ select {
     width: 100%;
     margin: 0;
     border-radius: 0;
-    background: #000;
+    background: transparent;
   }
   .header-topbar-contact { display: none; }
 }
@@ -537,6 +537,7 @@ textarea {
 
 @media (max-width: 420px) {
   .public-site .site-header {
+    top: 40px;
     left: 0;
     right: 0;
     width: 100%;
@@ -586,6 +587,7 @@ textarea {
   left: 0;
   z-index: 20;
   width: 100%;
+  height: var(--public-header-offset);
   margin: 0;
 }
 
@@ -642,20 +644,29 @@ textarea {
 
 @media (max-width: 768px) {
   :root {
-    --public-header-offset: 50px;
+    --public-header-offset: 35px;
     --public-content-offset: 50px;
   }
 
   .public-site .site-header {
+    top: 45px;
     left: 0;
     right: 0;
     width: 100%;
     margin: 0;
     border-radius: 0;
+    background: rgba(0, 0, 0, 0.0);
+  }
+
+  .public-site:not(.home-site) .site-header {
+    top: 0;
+    z-index: 19;
+    padding-top: 45px;
     background: #000;
   }
 
   .header-topbar {
+    height: 45px;
     align-items: center;
     justify-content: center;
     flex-direction: column;
@@ -672,6 +683,7 @@ textarea {
   .header-topbar-contact { display: none; }
 
   .public-site .header-inner {
+    position: relative;
     flex-direction: row;
     align-items: center;
     padding: 8px 0;
@@ -706,17 +718,42 @@ textarea {
   }
 
   .public-site .nav {
-    display: none;
-    width: 100%;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 30;
+    display: grid;
+    width: min(82vw, 200px);
+    gap: 0;
     order: 4;
-    margin: 12px 0 0;
-    padding: 12px 0 0;
-    border-top: 1px solid #dedbd5;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 0 14px 14px 14px;
+    background: rgba(0, 0, 0, .96);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .28);
+    opacity: 0;
+    transform: translateX(18px);
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .24s ease, transform .24s ease, visibility 0s linear .24s;
   }
 
+   
   .public-site .nav.menu-open {
-    display: grid;
-    gap: 0;
+    opacity: 1;
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity .24s ease, transform .24s ease;
+  }
+
+  .public-site.home-site .nav {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    background: rgba(0, 0, 0, 0.96);
+
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .public-site .nav a {
@@ -729,6 +766,19 @@ textarea {
     margin-top: 10px;
     padding: 13px 16px;
     text-align: center;
+  }
+
+  .public-site .nav a.nav-admin-link {
+    width: auto;
+    margin-top: 10px;
+    border-bottom: 0;
+    justify-self: start;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .public-site .nav {
+      transition: none;
+    }
   }
 
   .whatsapp-float span { display: none; }
@@ -760,6 +810,52 @@ textarea {
 .public-site .site-header .nav a.shop-btn:hover,
 .public-site .site-header .nav a.shop-btn.active {
   color: #fff;
+}
+
+.nav-admin-link {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  color: inherit;
+  transition:
+    border-color 0.25s ease,
+    background 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.nav-admin-link svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+  stroke: white;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.nav-admin-link:hover,
+.nav-admin-link.active {
+  border-color: var(--yellow);
+  background: rgba(245, 197, 24, 0.03);
+  color: var(--yellow);
+  transform: translateY(-3px);
+}
+
+.public-site:not(.home-site) .nav-admin-link {
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #10243e;
+}
+
+.public-site:not(.home-site) .nav-admin-link:hover,
+.public-site:not(.home-site) .nav-admin-link.active {
+  color: #c62828;
+  border-color: #c62828;
+  background: rgba(198, 40, 40, 0.08);
 }
 
 /* Reference footer arrangement */

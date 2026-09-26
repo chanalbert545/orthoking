@@ -532,6 +532,13 @@
   margin-bottom: 22px;
 }
 
+.form-hint {
+  margin: -6px 0 18px;
+  color: #686868;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
 .form-group label {
   display: block;
   margin-bottom: 7px;

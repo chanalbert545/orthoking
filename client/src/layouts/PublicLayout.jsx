@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { useCart } from "../features/cart/CartContext.jsx";
+import { useScrollReveal } from "../hooks/useScrollReveal.js";
 
 function formatCountdown(endsAt) {
   if (!endsAt) return "";
@@ -32,6 +33,18 @@ export function PublicLayout({ settings, children }) {
   const [countdown, setCountdown] = useState("");
   const { items } = useCart();
   const count = items.reduce((sum, item) => sum + item.quantity, 0);
+  const prevCount = useRef(count);
+  const [cartPop, setCartPop] = useState(false);
+
+  useScrollReveal(location.pathname);
+
+  useEffect(() => {
+    if (count === prevCount.current) return;
+    prevCount.current = count;
+    setCartPop(true);
+    const timer = window.setTimeout(() => setCartPop(false), 450);
+    return () => window.clearTimeout(timer);
+  }, [count]);
   const phones = settings.phones || [];
   const branches = settings.branches || [];
 
@@ -99,7 +112,7 @@ export function PublicLayout({ settings, children }) {
                 <circle cx="10" cy="20" r="1.2" />
                 <circle cx="18" cy="20" r="1.2" />
               </svg>
-              <span className="cart-count">{count}</span>
+              <span className={`cart-count${cartPop ? " cart-count-pop" : ""}`}>{count}</span>
             </NavLink>
           </div>
           <button className="mobile-menu-toggle" type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
@@ -112,11 +125,23 @@ export function PublicLayout({ settings, children }) {
             <NavLink to="/blog" onClick={() => setMenuOpen(false)}>Blog</NavLink>
             <NavLink to="/contact" onClick={() => setMenuOpen(false)}>Contact</NavLink>
             <NavLink to="/shop" className="shop-btn" onClick={() => setMenuOpen(false)}>Shop Now</NavLink>
+            <NavLink
+              to="/admin/login"
+              className="nav-admin-link"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Admin"
+              title="Admin"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+              </svg>
+            </NavLink>
           </nav>
         </div>
       </header>
-      <main id="main-content">{children}</main>
-      {showScrollTop && <button className="scroll-top-button" type="button" aria-label="Back to top" title="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>}
+      <main id="main-content" key={location.pathname} className="route-enter">{children}</main>
+      {showScrollTop && <button className="scroll-top-button scroll-top-enter" type="button" aria-label="Back to top" title="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>}
       <a className="whatsapp-float" href="https://wa.me/256767696979" target="_blank" rel="noreferrer" aria-label="Chat with Dr. Ortho King on WhatsApp" title="Chat on WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A11.8 11.8 0 0 0 12.1 0C5.6 0 .4 5.2.4 11.7c0 2.1.6 4.1 1.6 5.9L.3 24l6.6-1.7a11.7 11.7 0 0 0 5.2 1.2h.1c6.4 0 11.7-5.2 11.7-11.7 0-3.1-1.2-6.1-3.4-8.3Zm-8.4 18c-1.6 0-3.2-.4-4.6-1.2l-.3-.2-3.9 1 1-3.8-.2-.3a9.7 9.7 0 1 1 8 4.5Zm5.3-7.3c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-1.8-.9-3-1.6-4.2-3.6-.3-.5.3-.5.8-1.6.1-.2.1-.4 0-.6-.1-.2-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.7s1.2 3.1 1.4 3.3c.2.2 2.3 3.5 5.6 4.9 2.1.9 2.5.7 3 .7.5 0 1.8-.7 2-1.3.3-.6.3-1.2.2-1.3-.1-.2-.3-.3-.6-.4Z" /></svg><span>Chat on WhatsApp</span></a>
       <footer className="site-footer">
         <div className="footer-inner">
